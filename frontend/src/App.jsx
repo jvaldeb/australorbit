@@ -4,13 +4,76 @@ import { useState, useEffect, useRef } from "react";
    SATELLITE REGISTRY
 ───────────────────────────────────────────── */
 const SATS = [
-  { id:"ISS",      name:"ISS",      full:"Estación Espacial Internacional", color:"#57C7FF", chilean:false, flag:null,  icon:"🏗️", desc:"Hogar permanente de astronautas desde 2000. Cruza Chile múltiples veces al día a 400 km de altitud.", orbit:"400 km", speed:"27,600 km/h" },
-  { id:"HST",      name:"Hubble",   full:"Telescopio Espacial Hubble",       color:"#7DD9A8", chilean:false, flag:null,  icon:"🔭", desc:"Más de 30 años fotografiando el universo desde 540 km. Ha producido sobre 1.5 millones de observaciones.", orbit:"540 km", speed:"27,300 km/h" },
-  { id:"TIANGONG", name:"Tiangong", full:"Estación Espacial China",          color:"#F5C47A", chilean:false, flag:"🇨🇳", icon:"🏮", desc:"Estación modular china en expansión activa desde 2021.", orbit:"390 km", speed:"27,700 km/h" },
-  { id:"SSOT",     name:"SSOT",     full:"Satélite Chileno de Observación",  color:"#C47B48", chilean:true,  flag:"🇨🇱", icon:"📡", desc:"Primer satélite de observación de Chile. Lanzado en 2011, captura imágenes de 1.45 m de resolución.", orbit:"628 km", speed:"27,200 km/h" },
-  { id:"LEMU",     name:"LEMU NGE", full:"Primer Satélite Privado Chileno",  color:"#6EE7B7", chilean:true,  flag:"🇨🇱", icon:"🌲", desc:"Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral.", orbit:"550 km", speed:"27,400 km/h" },
-  { id:"SUCHAI2",  name:"SUCHAI-2", full:"CubeSat Universidad de Chile",     color:"#A78BFA", chilean:true,  flag:"🇨🇱", icon:"🔬", desc:"CubeSat científico de la U. de Chile. Experimentos de plasma ionosférico en órbita baja.", orbit:"550 km", speed:"27,400 km/h" },
-  { id:"SUCHAI3",  name:"SUCHAI-3", full:"CubeSat Universidad de Chile",     color:"#F472B6", chilean:true,  flag:"🇨🇱", icon:"🌿", desc:"Tercer CubeSat chileno. Monitoreo forestal y medioambiental desde órbita polar.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"ISS", name:"ISS", full:"Estación Espacial Internacional", color:"#57C7FF", chilean:false, flag:null, icon:"🏗️",
+    desc:"Hogar permanente de astronautas desde el año 2000. Cruza Chile múltiples veces al día a 400 km de altitud.",
+    orbit:"400 km", speed:"27,600 km/h",
+    norad:25544,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/International_Space_Station_after_undocking_of_STS-132.jpg/1280px-International_Space_Station_after_undocking_of_STS-132.jpg",
+    specs:[
+      ["NORAD ID","25544"],["Lanzamiento","20 Nov 1998"],["Agencia","NASA / ESA / Roscosmos"],
+      ["Masa","420,000 kg"],["Tamaño","109 × 73 m"],["Inclinación","51.6°"],
+      ["Período orbital","92.9 min"],["Tripulación","6–7 personas"],["Tipo","Estación espacial"],
+    ]},
+  { id:"HST", name:"Hubble", full:"Telescopio Espacial Hubble", color:"#7DD9A8", chilean:false, flag:null, icon:"🔭",
+    desc:"Más de 30 años fotografiando el universo desde 540 km. Ha producido sobre 1.5 millones de observaciones científicas.",
+    orbit:"540 km", speed:"27,300 km/h",
+    norad:20580,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/HST-SM4.jpeg/1280px-HST-SM4.jpeg",
+    specs:[
+      ["NORAD ID","20580"],["Lanzamiento","24 Abr 1990"],["Agencia","NASA / ESA"],
+      ["Masa","11,110 kg"],["Diámetro espejo","2.4 m"],["Inclinación","28.5°"],
+      ["Período orbital","95.4 min"],["Observaciones","+1.5 millones"],["Tipo","Telescopio espacial"],
+    ]},
+  { id:"TIANGONG", name:"Tiangong", full:"Estación Espacial China", color:"#F5C47A", chilean:false, flag:"🇨🇳", icon:"🏮",
+    desc:"Estación espacial modular china en expansión activa desde 2021. Módulo central Tianhe lanzado en abril de ese año.",
+    orbit:"390 km", speed:"27,700 km/h",
+    norad:48274,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Tiangong_space_station_2022.jpg/1280px-Tiangong_space_station_2022.jpg",
+    specs:[
+      ["NORAD ID","48274"],["Lanzamiento","29 Abr 2021"],["Agencia","CNSA"],
+      ["Masa","~100,000 kg"],["Módulos","3 (Tianhe + Wentian + Mengtian)"],["Inclinación","41.5°"],
+      ["Período orbital","91.6 min"],["Tripulación","3 personas"],["Tipo","Estación espacial"],
+    ]},
+  { id:"SSOT", name:"SSOT", full:"Satélite Chileno de Observación", color:"#C47B48", chilean:true, flag:"🇨🇱", icon:"📡",
+    desc:"Primer satélite de observación de Chile. Lanzado en 2011, captura imágenes de 1.45 m de resolución para cartografía y emergencias.",
+    orbit:"628 km", speed:"27,200 km/h",
+    norad:38011,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/SSOT_satellite.jpg/1280px-SSOT_satellite.jpg",
+    specs:[
+      ["NORAD ID","38011"],["Lanzamiento","16 Dic 2011"],["Agencia","FACH / EADS Astrium"],
+      ["Masa","~150 kg"],["Resolución","1.45 m"],["Inclinación","97.8°"],
+      ["Período orbital","97.1 min"],["Tipo","Observación terrestre"],["País","🇨🇱 Chile"],
+    ]},
+  { id:"LEMU", name:"LEMU NGE", full:"Primer Satélite Privado Chileno", color:"#6EE7B7", chilean:true, flag:"🇨🇱", icon:"🌲",
+    desc:"Primer satélite privado chileno. Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral.",
+    orbit:"550 km", speed:"27,400 km/h",
+    norad:60532,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/SpaceX_Transporter-11_mission_patch.png/800px-SpaceX_Transporter-11_mission_patch.png",
+    specs:[
+      ["NORAD ID","60532"],["Lanzamiento","16 Ago 2024"],["Empresa","Lemu (Chile)"],
+      ["Tipo sat.","CubeSat 6U"],["Sensor","Cámara hiperespectral"],["Inclinación","97.5°"],
+      ["Período orbital","95.6 min"],["Misión","Monitoreo biodiversidad"],["País","🇨🇱 Chile"],
+    ]},
+  { id:"SUCHAI2", name:"SUCHAI-2", full:"CubeSat Universidad de Chile", color:"#A78BFA", chilean:true, flag:"🇨🇱", icon:"🔬",
+    desc:"CubeSat científico desarrollado en la Universidad de Chile. Experimentos de plasma ionosférico en órbita baja.",
+    orbit:"550 km", speed:"27,400 km/h",
+    norad:57757,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[
+      ["NORAD ID","57757"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],
+      ["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],
+      ["Período orbital","95.6 min"],["Misión","Plasma ionosférico"],["País","🇨🇱 Chile"],
+    ]},
+  { id:"SUCHAI3", name:"SUCHAI-3", full:"CubeSat Universidad de Chile", color:"#F472B6", chilean:true, flag:"🇨🇱", icon:"🌿",
+    desc:"Tercer CubeSat chileno. Monitoreo forestal y medioambiental desde órbita polar sincrónica al sol.",
+    orbit:"550 km", speed:"27,400 km/h",
+    norad:57758,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[
+      ["NORAD ID","57758"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],
+      ["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],
+      ["Período orbital","95.6 min"],["Misión","Monitoreo forestal"],["País","🇨🇱 Chile"],
+    ]},
 ];
 
 const API      = "https://australorbit-production.up.railway.app";
@@ -480,10 +543,11 @@ export default function App() {
   const [notifDismissed, setNotifDismissed] = useState(false);
   const [logoError, setLogoError]       = useState(false);
   const [section, setSection]           = useState("passes");
+  const [fichaOpen, setFichaOpen]       = useState(false);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
-    setLoading(true); setError(null); setPasses([]); setNotifDismissed(false);
+    setLoading(true); setError(null); setPasses([]); setNotifDismissed(false); setFichaOpen(false);
     fetch(`${API}/passes/${sat.id}`)
       .then(r => r.json()).then(d => { setPasses(d.passes || []); setLoading(false); })
       .catch(() => { setError("No se pudo conectar al servidor."); setLoading(false); });
@@ -529,9 +593,12 @@ export default function App() {
         .sat-btn{transition:all 0.25s;}
         .sat-btn:hover{transform:translateY(-1px);}
         .pass-card:hover{border-color:rgba(255,255,255,0.1)!important;}
+        @media(max-width:1100px){
+          .main-grid{grid-template-columns:272px 1fr!important;}
+          .news-sidebar{display:none!important;}
+        }
         @media(max-width:880px){
           .main-grid{grid-template-columns:1fr!important;}
-          .news-grid{grid-template-columns:1fr!important;}
           .hero-grid{grid-template-columns:1fr!important;}
           .hero-visual{display:none!important;}
         }
@@ -628,106 +695,129 @@ export default function App() {
 
           <div style={{height:1,background:"rgba(255,255,255,0.04)"}}/>
 
-          {/* ── MAIN GRID ── */}
-          <div className="main-grid" style={{display:"grid",gridTemplateColumns:"292px 1fr",gap:26,padding:"24px 0",alignItems:"start"}}>
+          {/* ── MAIN GRID: left | center | right ── */}
+          <div className="main-grid" style={{display:"grid",gridTemplateColumns:"272px 1fr 260px",gap:22,padding:"24px 0",alignItems:"start"}}>
 
-            {/* ── LEFT ── */}
+            {/* ── COL 1: mapa + live + stats ── */}
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {/* map tabs */}
               <div style={{display:"flex",gap:5}}>
                 {[["globe","🌍 Globo"],["chile","🇨🇱 Chile"]].map(([id,label])=>(
-                  <button key={id} onClick={()=>setMapTab(id)} style={{flex:1,padding:"8px",borderRadius:8,background:mapTab===id?sat.color+"12":"rgba(255,255,255,0.022)",border:`1px solid ${mapTab===id?sat.color+"40":"rgba(255,255,255,0.055)"}`,color:mapTab===id?sat.color:"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,letterSpacing:"0.08em",transition:"all 0.2s",backdropFilter:"blur(8px)"}}>
+                  <button key={id} onClick={()=>setMapTab(id)} style={{flex:1,padding:"7px",borderRadius:8,background:mapTab===id?sat.color+"12":"rgba(255,255,255,0.022)",border:`1px solid ${mapTab===id?sat.color+"40":"rgba(255,255,255,0.055)"}`,color:mapTab===id?sat.color:"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.08em",transition:"all 0.2s",backdropFilter:"blur(8px)"}}>
                     {label}
                   </button>
                 ))}
               </div>
-
-              {/* map */}
-              <div style={{borderRadius:15,border:`1px solid ${sat.color}16`,background:"rgba(3,8,20,0.45)",padding:10,display:"flex",justifyContent:"center",position:"relative",backdropFilter:"blur(10px)",transition:"border-color 0.6s",minHeight:200}}>
-                {!pos&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:15,background:"rgba(3,8,20,0.88)",zIndex:2}}><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:sat.color,letterSpacing:"0.14em"}}>Cargando...</span></div>}
+              <div style={{borderRadius:14,border:`1px solid ${sat.color}16`,background:"rgba(3,8,20,0.45)",padding:9,display:"flex",justifyContent:"center",position:"relative",backdropFilter:"blur(10px)",transition:"border-color 0.6s",minHeight:190}}>
+                {!pos&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:14,background:"rgba(3,8,20,0.88)",zIndex:2}}><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:sat.color,letterSpacing:"0.12em"}}>Cargando...</span></div>}
                 {mapTab==="globe"?<Globe sat={sat} pos={pos}/>:<ChileMap sat={sat} pos={pos}/>}
               </div>
-
               <LivePanel pos={pos} sat={sat}/>
-
-              {/* sat info */}
-              <div style={{borderRadius:14,padding:"16px 18px",background:`linear-gradient(148deg,${sat.color}08,rgba(3,8,20,0.5))`,border:`1px solid ${sat.color}18`,backdropFilter:"blur(10px)",transition:"all 0.6s"}}>
-                <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:13}}>
-                  <span style={{fontSize:30,lineHeight:1}}>{sat.icon}</span>
-                  <div style={{flex:1}}>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14.5,fontWeight:500,color:sat.color,letterSpacing:"0.04em",transition:"color 0.6s"}}>{sat.name}</div>
-                    <div style={{fontSize:11,color:"#334155",marginTop:3,lineHeight:1.4}}>{sat.full}</div>
-                  </div>
-                  {sat.flag&&<span style={{fontSize:17}}>{sat.flag}</span>}
-                </div>
-                <p style={{fontSize:11.5,color:"#64748b",lineHeight:1.72,fontWeight:300,marginBottom:13}}>{sat.desc}</p>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-                  {[["Órbita",sat.orbit],["Velocidad",sat.speed]].map(([l,v])=>(
-                    <div key={l} style={{padding:"9px 11px",borderRadius:9,background:"rgba(3,8,20,0.55)",textAlign:"center",border:"1px solid rgba(255,255,255,0.038)"}}>
-                      <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"#1E3A50",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
-                      <div style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:"#E0E8F0",fontWeight:500}}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                {sat.chilean&&<div style={{marginTop:11,padding:"8px 12px",borderRadius:8,background:"#C47B480A",border:"1px solid #C47B4818",fontSize:10.5,color:"#C47B48",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>🇨🇱 Satélite de fabricación chilena</div>}
-              </div>
-
-              {/* stat pills */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
                 {[[future.length,"Pases",sat.color],[future.filter(p=>p.visible).length,"Visibles","#4ade80"]].map(([v,l,c])=>(
-                  <div key={l} style={{borderRadius:12,padding:"13px 15px",background:"rgba(255,255,255,0.018)",border:"1px solid rgba(255,255,255,0.048)",backdropFilter:"blur(8px)"}}>
+                  <div key={l} style={{borderRadius:11,padding:"12px 14px",background:"rgba(255,255,255,0.018)",border:"1px solid rgba(255,255,255,0.048)",backdropFilter:"blur(8px)"}}>
                     <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"#1E3A50",letterSpacing:"0.16em",textTransform:"uppercase",marginBottom:5}}>{l}</div>
-                    <div style={{fontSize:29,fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,color:c,transition:"color 0.6s"}}>{v}</div>
+                    <div style={{fontSize:27,fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,color:c,transition:"color 0.6s"}}>{v}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ── RIGHT ── */}
-            <div style={{display:"flex",flexDirection:"column"}}>
-              {/* section tabs */}
-              <div style={{display:"flex",marginBottom:20,borderBottom:"1px solid rgba(255,255,255,0.055)"}}>
-                {[["passes","Pases"],["news","Noticias espaciales"]].map(([id,label])=>(
-                  <button key={id} onClick={()=>setSection(id)} style={{padding:"10px 22px",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:"0.1em",color:section===id?"#F0F4F8":"#1E3A50",borderBottom:section===id?`2px solid ${sat.color}`:"2px solid transparent",transition:"all 0.25s",background:"none",marginBottom:-1}}>
-                    {label}
-                  </button>
-                ))}
+            {/* ── COL 2: pases + ficha técnica ── */}
+            <div style={{display:"flex",flexDirection:"column",gap:0}}>
+              {/* passes header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
+                <div>
+                  <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Pases de <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span></h2>
+                  <div style={{fontSize:10,color:"#1E3A50",marginTop:2,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
+                </div>
+                <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"6px 12px",borderRadius:8,background:onlyVis?"#22c55e10":"rgba(255,255,255,0.025)",border:`1px solid ${onlyVis?"#22c55e2E":"rgba(255,255,255,0.075)"}`,color:onlyVis?"#4ade80":"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}>
+                  {onlyVis?"● VISIBLES":"TODOS"}
+                </button>
               </div>
+              {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:12,display:"inline-block",animation:"orbSpin 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.14em"}}>Calculando pases reales...</div></div>}
+              {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed #f43f5e2E",borderRadius:14,background:"#f43f5e06"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
+              {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
+              {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
 
-              {/* PASSES */}
-              {section==="passes"&&<>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:12}}>
-                  <div>
-                    <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Pases de <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span></h2>
-                    <div style={{fontSize:10.5,color:"#1E3A50",marginTop:3,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
+              {/* ── FICHA TÉCNICA ── */}
+              {/* ── FICHA TÉCNICA (colapsable) ── */}
+              <div style={{marginTop:24,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+                <button onClick={()=>setFichaOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"14px 0",cursor:"pointer",background:"none",border:"none",textAlign:"left"}}>
+                  <span style={{fontSize:18,lineHeight:1}}>{sat.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:"#F5F7FA",letterSpacing:"-0.01em"}}>
+                      Ficha técnica <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span>
+                    </div>
+                    <div style={{fontSize:9.5,color:"#1E3A50",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{sat.full}</div>
                   </div>
-                  <div style={{display:"flex",gap:13,alignItems:"center"}}>
-                    <div style={{textAlign:"center"}}><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:25,fontWeight:600,color:sat.color,transition:"color 0.6s"}}>{future.length}</div><div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em"}}>PASES</div></div>
-                    <div style={{textAlign:"center"}}><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:25,fontWeight:600,color:"#4ade80"}}>{future.filter(p=>p.visible).length}</div><div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em"}}>VISIBLES</div></div>
-                    <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"7px 14px",borderRadius:9,background:onlyVis?"#22c55e10":"rgba(255,255,255,0.025)",border:`1px solid ${onlyVis?"#22c55e2E":"rgba(255,255,255,0.075)"}`,color:onlyVis?"#4ade80":"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}>
-                      {onlyVis?"● VISIBLES":"TODOS"}
-                    </button>
+                  <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
+                    {sat.flag&&<span style={{fontSize:15}}>{sat.flag}</span>}
+                    <span style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",color:fichaOpen?sat.color:"#334155",border:`1px solid ${fichaOpen?sat.color+"44":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"3px 8px",background:fichaOpen?sat.color+"10":"rgba(255,255,255,0.03)",transition:"all 0.25s",letterSpacing:"0.08em"}}>
+                      {fichaOpen?"CERRAR ▲":"VER DATOS ▼"}
+                    </span>
                   </div>
-                </div>
-                {loading&&<div style={{padding:56,textAlign:"center"}}><div style={{fontSize:26,marginBottom:14,display:"inline-block",animation:"orbSpin 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.16em"}}>Calculando pases reales...</div></div>}
-                {error&&<div style={{padding:36,textAlign:"center",border:"1px dashed #f43f5e2E",borderRadius:14,background:"#f43f5e06"}}><div style={{fontSize:24,marginBottom:12}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
-                {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
-                {!loading&&!error&&shown.length===0&&<div style={{padding:52,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:26,marginBottom:12}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
-              </>}
+                </button>
+                {fichaOpen&&(
+                  <div style={{animation:"fadeUp 0.25s ease both",paddingBottom:16}}>
+                    {/* foto referencial */}
+                    <div style={{borderRadius:12,overflow:"hidden",marginBottom:14,border:`1px solid ${sat.color}18`,position:"relative"}}>
+                      <img
+                        src={sat.photo}
+                        alt={sat.name}
+                        style={{width:"100%",height:180,objectFit:"cover",opacity:0.85,display:"block"}}
+                        onError={e=>{e.target.parentElement.style.display="none";}}
+                      />
+                      <div style={{position:"absolute",inset:0,background:`linear-gradient(to top, rgba(3,8,20,0.7) 0%, transparent 50%)`}}/>
+                      <div style={{position:"absolute",bottom:10,left:12,fontFamily:"'IBM Plex Mono',monospace",fontSize:8,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em"}}>IMAGEN REFERENCIAL</div>
+                    </div>
+                    {/* descripción */}
+                    <p style={{fontSize:11.5,color:"#64748b",lineHeight:1.72,fontWeight:300,marginBottom:14}}>{sat.desc}</p>
+                    {/* tabla specs */}
+                    <div style={{borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,0.055)",background:"rgba(3,8,20,0.4)",backdropFilter:"blur(8px)",marginBottom:12}}>
+                      {sat.specs.map(([l,v],i)=>(
+                        <div key={l} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 14px",background:i%2===0?"transparent":"rgba(255,255,255,0.012)",borderBottom:i<sat.specs.length-1?"1px solid rgba(255,255,255,0.038)":"none"}}>
+                          <span style={{fontSize:9.5,fontFamily:"'IBM Plex Mono',monospace",color:"#334155",letterSpacing:"0.1em",textTransform:"uppercase"}}>{l}</span>
+                          <span style={{fontSize:11,fontFamily:"'IBM Plex Mono',monospace",color:"#C0CCD8",fontWeight:500,textAlign:"right",maxWidth:"55%"}}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* fuente N2YO */}
+                    <a
+                      href={`https://www.n2yo.com/satellite/?s=${sat.norad}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:9.5,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",padding:"6px 11px",borderRadius:7,background:"rgba(87,199,255,0.07)",border:"1px solid rgba(87,199,255,0.18)",letterSpacing:"0.06em",transition:"all 0.2s"}}
+                    >
+                      Ver en N2YO.com →
+                    </a>
+                    {sat.chilean&&<div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#C47B480A",border:"1px solid #C47B4818",fontSize:10.5,color:"#C47B48",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>🇨🇱 Satélite de fabricación y operación chilena</div>}
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {/* NEWS */}
-              {section==="news"&&<>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:12}}>
-                  <div>
-                    <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Noticias <span style={{color:"#57C7FF"}}>espaciales</span></h2>
-                    <div style={{fontSize:10.5,color:"#1E3A50",marginTop:3,fontFamily:"'IBM Plex Mono',monospace"}}>Actualizadas diariamente · traducidas al español</div>
+            {/* ── COL 3: noticias sidebar ── */}
+            <div style={{display:"flex",flexDirection:"column",gap:0,position:"sticky",top:20}}>
+              <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:14}}>
+                <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,letterSpacing:"-0.01em",color:"#F5F7FA"}}>Noticias <span style={{color:"#57C7FF"}}>espaciales</span></h2>
+                <span style={{fontSize:8,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>SPACEFLIGHT NEWS</span>
+              </div>
+              {newsLoading&&<div style={{padding:36,textAlign:"center"}}><div style={{fontSize:20,marginBottom:10}}>📡</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:"#57C7FF",letterSpacing:"0.12em"}}>Cargando...</div></div>}
+              {!newsLoading&&news.length===0&&<div style={{padding:36,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:12}}><div style={{fontSize:20,marginBottom:8}}>📭</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:"#1E3A50"}}>Sin noticias disponibles</div></div>}
+              {!newsLoading&&news.map((a,i)=>(
+                <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" style={{display:"block",textDecoration:"none",borderRadius:12,overflow:"hidden",background:"rgba(255,255,255,0.014)",border:"1px solid rgba(255,255,255,0.06)",backdropFilter:"blur(8px)",marginBottom:10,transition:"border-color 0.2s"}}>
+                  {a.image&&<div style={{height:110,overflow:"hidden",flexShrink:0}}><img src={a.image} alt={a.title} style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.78}} onError={e=>{e.target.parentElement.style.display="none";}}/></div>}
+                  <div style={{padding:"11px 13px"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:7}}>
+                      <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",padding:"2px 7px",borderRadius:4,background:"rgba(87,199,255,0.08)",color:"#57C7FF",border:"1px solid rgba(87,199,255,0.15)"}}>{(a.source||"SPACE").toUpperCase()}</span>
+                      <span style={{fontSize:8,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace"}}>{a.published}</span>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:500,color:"#D0DCE8",lineHeight:1.42,letterSpacing:"-0.01em",marginBottom:6}}>{a.title}</div>
+                    {a.summary&&<div style={{fontSize:10.5,color:"#334155",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.summary}</div>}
+                    <div style={{marginTop:8,fontSize:9.5,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>Leer más →</div>
                   </div>
-                  <div style={{fontSize:8.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>Spaceflight News API</div>
-                </div>
-                {newsLoading&&<div style={{padding:56,textAlign:"center"}}><div style={{fontSize:24,marginBottom:14}}>📡</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#57C7FF",letterSpacing:"0.14em"}}>Cargando noticias...</div></div>}
-                {!newsLoading&&<div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:14}}>{news.map((a,i)=><NewsCard key={i} article={a}/>)}</div>}
-                {!newsLoading&&news.length===0&&<div style={{padding:52,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:26,marginBottom:12}}>📭</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50"}}>No se pudieron cargar las noticias</div></div>}
-              </>}
+                </a>
+              ))}
             </div>
           </div>
 
