@@ -614,14 +614,12 @@ export default function App() {
           <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 0 16px",borderBottom:"1px solid rgba(255,255,255,0.045)",animation:"fadeIn 0.6s ease both"}}>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:50,width:"auto",objectFit:"contain",filter:`drop-shadow(0 0 14px ${sat.color}30)`,transition:"filter 0.6s"}}/>
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:56,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 14px rgba(10,28,80,0.55)) brightness(1.08)",transition:"filter 0.6s"}}/>
                 :<div style={{display:"flex",alignItems:"center",gap:11}}>
                   <div style={{width:36,height:36,borderRadius:9,background:`${sat.color}18`,border:`1px solid ${sat.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>🛰</div>
                   <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13.5,fontWeight:500,letterSpacing:"0.14em",color:sat.color,transition:"color 0.6s"}}>AUSTRAL ORBIT</span>
                 </div>
               }
-              <div style={{height:18,width:1,background:"rgba(255,255,255,0.07)"}}/>
-              <span style={{fontSize:9.5,color:"#1E3A50",letterSpacing:"0.2em",textTransform:"uppercase",fontFamily:"'IBM Plex Mono',monospace"}}>Santiago · 33.4°S</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               {pos&&(
@@ -811,7 +809,7 @@ export default function App() {
           <div style={{padding:"16px 0 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
               {!logoError
-                ?<img src="/logo.png" onError={()=>setLogoError(true)} alt="Austral Orbit" style={{height:20,width:"auto",objectFit:"contain",opacity:0.3,filter:"brightness(1.4)"}}/>
+                ?<img src="/logo.png" onError={()=>setLogoError(true)} alt="Austral Orbit" style={{height:28,width:"auto",objectFit:"contain",opacity:0.55,filter:"brightness(1.6) drop-shadow(0 1px 6px rgba(10,28,80,0.4))"}}/>
                 :<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"#0C2040",letterSpacing:"0.18em"}}>AUSTRAL ORBIT</span>
               }
               <div style={{fontSize:7.5,color:"#0C2040",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>Owner: Joaquín Valdebenito Palma</div>
