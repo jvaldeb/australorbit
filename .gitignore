@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+news_cache.json
+tle_*.txt
+*.txt
+node_modules/
+frontend/dist/
