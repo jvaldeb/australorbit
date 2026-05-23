@@ -712,6 +712,46 @@ export default function App() {
                 {mapTab==="globe"?<Globe sat={sat} pos={pos}/>:<ChileMap sat={sat} pos={pos}/>}
               </div>
               <LivePanel pos={pos} sat={sat}/>
+
+              {/* ── FICHA TÉCNICA (colapsable) ── */}
+              <div style={{borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+                <button onClick={()=>setFichaOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 0",cursor:"pointer",background:"none",border:"none",textAlign:"left"}}>
+                  <span style={{fontSize:16,lineHeight:1}}>{sat.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:"#F5F7FA",letterSpacing:"-0.01em"}}>
+                      Ficha técnica <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span>
+                    </div>
+                    <div style={{fontSize:8.5,color:"#1E3A50",marginTop:1,fontFamily:"'IBM Plex Mono',monospace"}}>{sat.full}</div>
+                  </div>
+                  <span style={{fontSize:9.5,fontFamily:"'IBM Plex Mono',monospace",color:fichaOpen?sat.color:"#334155",border:`1px solid ${fichaOpen?sat.color+"44":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"3px 8px",background:fichaOpen?sat.color+"10":"rgba(255,255,255,0.03)",transition:"all 0.25s",letterSpacing:"0.08em",flexShrink:0}}>
+                    {fichaOpen?"▲":"▼"}
+                  </span>
+                </button>
+                {fichaOpen&&(
+                  <div style={{animation:"fadeUp 0.25s ease both",paddingBottom:12}}>
+                    <div style={{borderRadius:10,overflow:"hidden",marginBottom:12,border:`1px solid ${sat.color}18`,position:"relative"}}>
+                      <img src={sat.photo} alt={sat.name} style={{width:"100%",height:155,objectFit:"cover",opacity:0.82,display:"block"}} onError={e=>{e.target.parentElement.style.display="none";}}/>
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(3,8,20,0.7) 0%, transparent 55%)"}}/>
+                      <div style={{position:"absolute",bottom:8,left:10,fontFamily:"'IBM Plex Mono',monospace",fontSize:7.5,color:"rgba(255,255,255,0.35)",letterSpacing:"0.1em"}}>IMAGEN REFERENCIAL</div>
+                    </div>
+                    <p style={{fontSize:11,color:"#64748b",lineHeight:1.7,fontWeight:300,marginBottom:12}}>{sat.desc}</p>
+                    <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.055)",background:"rgba(3,8,20,0.4)",backdropFilter:"blur(8px)",marginBottom:10}}>
+                      {sat.specs.map(([l,v],i)=>(
+                        <div key={l} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:i%2===0?"transparent":"rgba(255,255,255,0.012)",borderBottom:i<sat.specs.length-1?"1px solid rgba(255,255,255,0.038)":"none"}}>
+                          <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"#334155",letterSpacing:"0.1em",textTransform:"uppercase"}}>{l}</span>
+                          <span style={{fontSize:10.5,fontFamily:"'IBM Plex Mono',monospace",color:"#C0CCD8",fontWeight:500,textAlign:"right",maxWidth:"58%"}}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <a href={`https://www.n2yo.com/satellite/?s=${sat.norad}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:9,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",padding:"5px 10px",borderRadius:7,background:"rgba(87,199,255,0.07)",border:"1px solid rgba(87,199,255,0.18)",letterSpacing:"0.06em"}}>
+                        Ver en N2YO.com →
+                      </a>
+                      {sat.chilean&&<span style={{fontSize:9,color:"#C47B48",fontFamily:"'IBM Plex Mono',monospace",padding:"5px 10px",borderRadius:7,background:"#C47B480A",border:"1px solid #C47B4818",letterSpacing:"0.06em"}}>🇨🇱 Fabricación chilena</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
                 {[[future.length,"Pases",sat.color],[future.filter(p=>p.visible).length,"Visibles","#4ade80"]].map(([v,l,c])=>(
                   <div key={l} style={{borderRadius:11,padding:"12px 14px",background:"rgba(255,255,255,0.018)",border:"1px solid rgba(255,255,255,0.048)",backdropFilter:"blur(8px)"}}>
@@ -722,7 +762,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── COL 2: pases + ficha técnica ── */}
+            {/* ── COL 2: pases ── */}
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {/* passes header */}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -739,61 +779,6 @@ export default function App() {
               {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
               {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
 
-              {/* ── FICHA TÉCNICA ── */}
-              {/* ── FICHA TÉCNICA (colapsable) ── */}
-              <div style={{marginTop:24,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-                <button onClick={()=>setFichaOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"14px 0",cursor:"pointer",background:"none",border:"none",textAlign:"left"}}>
-                  <span style={{fontSize:18,lineHeight:1}}>{sat.icon}</span>
-                  <div style={{flex:1}}>
-                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:"#F5F7FA",letterSpacing:"-0.01em"}}>
-                      Ficha técnica <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span>
-                    </div>
-                    <div style={{fontSize:9.5,color:"#1E3A50",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{sat.full}</div>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
-                    {sat.flag&&<span style={{fontSize:15}}>{sat.flag}</span>}
-                    <span style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",color:fichaOpen?sat.color:"#334155",border:`1px solid ${fichaOpen?sat.color+"44":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"3px 8px",background:fichaOpen?sat.color+"10":"rgba(255,255,255,0.03)",transition:"all 0.25s",letterSpacing:"0.08em"}}>
-                      {fichaOpen?"CERRAR ▲":"VER DATOS ▼"}
-                    </span>
-                  </div>
-                </button>
-                {fichaOpen&&(
-                  <div style={{animation:"fadeUp 0.25s ease both",paddingBottom:16}}>
-                    {/* foto referencial */}
-                    <div style={{borderRadius:12,overflow:"hidden",marginBottom:14,border:`1px solid ${sat.color}18`,position:"relative"}}>
-                      <img
-                        src={sat.photo}
-                        alt={sat.name}
-                        style={{width:"100%",height:180,objectFit:"cover",opacity:0.85,display:"block"}}
-                        onError={e=>{e.target.parentElement.style.display="none";}}
-                      />
-                      <div style={{position:"absolute",inset:0,background:`linear-gradient(to top, rgba(3,8,20,0.7) 0%, transparent 50%)`}}/>
-                      <div style={{position:"absolute",bottom:10,left:12,fontFamily:"'IBM Plex Mono',monospace",fontSize:8,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em"}}>IMAGEN REFERENCIAL</div>
-                    </div>
-                    {/* descripción */}
-                    <p style={{fontSize:11.5,color:"#64748b",lineHeight:1.72,fontWeight:300,marginBottom:14}}>{sat.desc}</p>
-                    {/* tabla specs */}
-                    <div style={{borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,0.055)",background:"rgba(3,8,20,0.4)",backdropFilter:"blur(8px)",marginBottom:12}}>
-                      {sat.specs.map(([l,v],i)=>(
-                        <div key={l} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 14px",background:i%2===0?"transparent":"rgba(255,255,255,0.012)",borderBottom:i<sat.specs.length-1?"1px solid rgba(255,255,255,0.038)":"none"}}>
-                          <span style={{fontSize:9.5,fontFamily:"'IBM Plex Mono',monospace",color:"#334155",letterSpacing:"0.1em",textTransform:"uppercase"}}>{l}</span>
-                          <span style={{fontSize:11,fontFamily:"'IBM Plex Mono',monospace",color:"#C0CCD8",fontWeight:500,textAlign:"right",maxWidth:"55%"}}>{v}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* fuente N2YO */}
-                    <a
-                      href={`https://www.n2yo.com/satellite/?s=${sat.norad}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:9.5,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",padding:"6px 11px",borderRadius:7,background:"rgba(87,199,255,0.07)",border:"1px solid rgba(87,199,255,0.18)",letterSpacing:"0.06em",transition:"all 0.2s"}}
-                    >
-                      Ver en N2YO.com →
-                    </a>
-                    {sat.chilean&&<div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#C47B480A",border:"1px solid #C47B4818",fontSize:10.5,color:"#C47B48",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>🇨🇱 Satélite de fabricación y operación chilena</div>}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* ── COL 3: noticias sidebar ── */}
