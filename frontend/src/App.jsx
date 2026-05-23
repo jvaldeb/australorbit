@@ -1,224 +1,318 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
-const SATELLITES = [
-  { id:"ISS",      name:"ISS",           color:"#38bdf8", image:"🏗️", chilean:false, flag:null,  desc:"Estación Espacial Internacional. Hogar permanente de astronautas desde el año 2000.", orbit:"400 km", speed:"27,600 km/h" },
-  { id:"HST",      name:"Hubble",        color:"#34d399", image:"🔭", chilean:false, flag:null,  desc:"Más de 30 años fotografiando el universo desde 540 km de altitud.", orbit:"540 km", speed:"27,300 km/h" },
-  { id:"TIANGONG", name:"Tiangong",      color:"#fbbf24", image:"🏮", chilean:false, flag:"🇨🇳", desc:"Estación espacial china en expansión activa desde 2021.", orbit:"390 km", speed:"27,700 km/h" },
-  { id:"SSOT",     name:"SSOT",          color:"#f43f5e", image:"📡", chilean:true,  flag:"🇨🇱", desc:"Satélite chileno de observación de la Tierra. Lanzado en 2011, captura imágenes de 1.45m de resolución para cartografía y emergencias.", orbit:"628 km", speed:"27,200 km/h" },
-  { id:"LEMU",     name:"LEMU NGE",      color:"#22c55e", image:"🌲", chilean:true,  flag:"🇨🇱", desc:"Primer satélite privado chileno. Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral. Creado por la startup Lemu.", orbit:"550 km", speed:"27,400 km/h" },
-  { id:"SUCHAI2",  name:"SUCHAI-2",      color:"#c084fc", image:"🔬", chilean:true,  flag:"🇨🇱", desc:"CubeSat de la U. de Chile. Experimentos de plasma ionosférico en órbita.", orbit:"550 km", speed:"27,400 km/h" },
-  { id:"SUCHAI3",  name:"SUCHAI-3",      color:"#e879f9", image:"🌿", chilean:true,  flag:"🇨🇱", desc:"Tercer CubeSat chileno de la U. de Chile. Monitoreo forestal y medioambiental.", orbit:"550 km", speed:"27,400 km/h" },
+/* ─────────────────────────────────────────────
+   SATELLITE REGISTRY
+───────────────────────────────────────────── */
+const SATS = [
+  { id:"ISS",      name:"ISS",      full:"Estación Espacial Internacional", color:"#57C7FF", chilean:false, flag:null,  icon:"🏗️", desc:"Hogar permanente de astronautas desde 2000. Cruza Chile múltiples veces al día a 400 km de altitud.", orbit:"400 km", speed:"27,600 km/h" },
+  { id:"HST",      name:"Hubble",   full:"Telescopio Espacial Hubble",       color:"#7DD9A8", chilean:false, flag:null,  icon:"🔭", desc:"Más de 30 años fotografiando el universo desde 540 km. Ha producido sobre 1.5 millones de observaciones.", orbit:"540 km", speed:"27,300 km/h" },
+  { id:"TIANGONG", name:"Tiangong", full:"Estación Espacial China",          color:"#F5C47A", chilean:false, flag:"🇨🇳", icon:"🏮", desc:"Estación modular china en expansión activa desde 2021.", orbit:"390 km", speed:"27,700 km/h" },
+  { id:"SSOT",     name:"SSOT",     full:"Satélite Chileno de Observación",  color:"#C47B48", chilean:true,  flag:"🇨🇱", icon:"📡", desc:"Primer satélite de observación de Chile. Lanzado en 2011, captura imágenes de 1.45 m de resolución.", orbit:"628 km", speed:"27,200 km/h" },
+  { id:"LEMU",     name:"LEMU NGE", full:"Primer Satélite Privado Chileno",  color:"#6EE7B7", chilean:true,  flag:"🇨🇱", icon:"🌲", desc:"Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"SUCHAI2",  name:"SUCHAI-2", full:"CubeSat Universidad de Chile",     color:"#A78BFA", chilean:true,  flag:"🇨🇱", icon:"🔬", desc:"CubeSat científico de la U. de Chile. Experimentos de plasma ionosférico en órbita baja.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"SUCHAI3",  name:"SUCHAI-3", full:"CubeSat Universidad de Chile",     color:"#F472B6", chilean:true,  flag:"🇨🇱", icon:"🌿", desc:"Tercer CubeSat chileno. Monitoreo forestal y medioambiental desde órbita polar.", orbit:"550 km", speed:"27,400 km/h" },
 ];
 
-const API = "https://australorbit-production.up.railway.app";
-const SANTIAGO = { lat:-33.4489, lon:-70.6693 };
-const pad = n => String(n).padStart(2,"0");
-const d2r = d => d * Math.PI / 180;
-const r2d = r => r * 180 / Math.PI;
+const API      = "https://australorbit-production.up.railway.app";
+const SANTIAGO = { lat: -33.4489, lon: -70.6693 };
+const d2r      = d => d * Math.PI / 180;
+const r2d      = r => r * 180 / Math.PI;
+const pad      = n => String(n).padStart(2, "0");
 
-function groundTrack(lat, lon, inclination, periodMin, minutesAhead=120, step=0.5) {
-  const degPerMin = 360 / periodMin;
-  const pts = [];
-  for (let i = -periodMin; i <= minutesAhead; i += step) {
-    const dLon = degPerMin * i;
-    const newLon = ((lon + dLon + 180) % 360) - 180;
-    const phase = d2r((i / periodMin) * 360);
-    const newLat = Math.max(-90, Math.min(90, lat + Math.sin(phase) * inclination * 0.3));
-    pts.push({ lat: newLat, lon: newLon, past: i < 0 });
-  }
-  return pts;
-}
-
-function visRadius(altKm) { return r2d(Math.acos(6371 / (6371 + altKm))) * 0.88; }
+function visRadius(alt) { return r2d(Math.acos(6371 / (6371 + alt))) * 0.88; }
+function azLabel(deg)   { return ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"][Math.round(deg / 22.5) % 16]; }
 
 function fmtTime(iso) {
-  const d = new Date(iso), c = new Date(d.getTime() - 4*3600000);
+  const d = new Date(iso), c = new Date(d - 4 * 3600000);
   return `${pad(c.getUTCHours())}:${pad(c.getUTCMinutes())}`;
 }
 function fmtDate(iso) {
-  const d = new Date(iso), c = new Date(d.getTime() - 4*3600000);
-  const D=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  const M=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const d = new Date(iso), c = new Date(d - 4 * 3600000);
+  const D = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const M = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   return `${D[c.getUTCDay()]} ${c.getUTCDate()} ${M[c.getUTCMonth()]}`;
 }
 function timeUntil(iso) {
   const diff = new Date(iso) - new Date();
   if (diff < 0) return "Pasado";
-  const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000);
+  const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000);
   return h > 0 ? `${h}h ${m}m` : `${m} min`;
 }
 function countdown(iso) {
   const diff = new Date(iso) - new Date();
   if (diff < 0) return null;
-  const h = Math.floor(diff/3600000);
-  const m = Math.floor((diff%3600000)/60000);
-  const s = Math.floor((diff%60000)/1000);
+  const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
-const azLabel = deg => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"][Math.round(deg/22.5)%16];
-
-// ── Source badge color ────────────────────────────────────────────────────────
-function sourceBadgeColor(source) {
-  if (source.includes("NASA"))   return { bg:"#1e3a5f", color:"#60a5fa" };
-  if (source.includes("ESA"))    return { bg:"#1e3352", color:"#818cf8" };
-  if (source.includes("SpaceX")) return { bg:"#1a1a2e", color:"#94a3b8" };
-  if (source.includes("Space"))  return { bg:"#1e2a1e", color:"#4ade80" };
-  return { bg:"#1e2030", color:"#94a3b8" };
-}
-
-// ── Stars ─────────────────────────────────────────────────────────────────────
-function Stars() {
-  const stars = Array.from({length:90},(_,i)=>({
-    x:((i*137.508)%100).toFixed(2), y:((i*97.333)%100).toFixed(2),
-    r:i%4===0?1.4:i%4===1?0.8:0.5, op:(0.08+(i%6)*0.07).toFixed(2), dur:2+(i%5),
-  }));
-  return (
-    <svg style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}} preserveAspectRatio="xMidYMid slice">
-      {stars.map((s,i)=>(
-        <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r} fill="white" opacity={s.op}>
-          <animate attributeName="opacity" values={`${s.op};${s.op*0.15};${s.op}`} dur={`${s.dur}s`} repeatCount="indefinite"/>
-        </circle>
-      ))}
-    </svg>
-  );
-}
-
-// ── Globe ─────────────────────────────────────────────────────────────────────
-function Globe({ sat, pos }) {
-  const W=300,H=300,R=130,cx=150,cy=150,cLat=-20,cLon=-70;
-  function proj(lat,lon){
-    const φ=d2r(lat),λ=d2r(lon),φ0=d2r(cLat),λ0=d2r(cLon);
-    const cosC=Math.sin(φ0)*Math.sin(φ)+Math.cos(φ0)*Math.cos(φ)*Math.cos(λ-λ0);
-    if(cosC<0)return null;
-    return[cx+R*Math.cos(φ)*Math.sin(λ-λ0),cy-R*(Math.cos(φ0)*Math.sin(φ)-Math.sin(φ0)*Math.cos(φ)*Math.cos(λ-λ0))];
+function groundTrack(lat, lon, inc, period, ahead = 120, step = 0.5) {
+  const dpm = 360 / period, pts = [];
+  for (let i = -period; i <= ahead; i += step) {
+    const nl = ((lon + dpm * i) + 180) % 360 - 180;
+    const ph = d2r((i / period) * 360);
+    const na = Math.max(-90, Math.min(90, lat + Math.sin(ph) * inc * 0.3));
+    pts.push({ lat: na, lon: nl, past: i < 0 });
   }
-  const satLat=pos?.lat??0,satLon=pos?.lon??0,altKm=pos?.alt_km??400;
-  const sXY=proj(satLat,satLon);
+  return pts;
+}
+
+/* ─────────────────────────────────────────────
+   ORBITAL PLANET — hero visualization
+───────────────────────────────────────────── */
+function OrbitalPlanet({ sat, pos }) {
+  const cx = 200, cy = 200, R = 68;
+  const orbits = [
+    { rx: 110, ry: 38, tilt: -18, color: sat.color, period: 14, r: 5 },
+    { rx: 145, ry: 52, tilt: 12,  color: "#C47B48", period: 22, r: 3.5 },
+    { rx: 88,  ry: 30, tilt: -42, color: "#57C7FF", period: 9,  r: 3 },
+  ];
+  return (
+    <svg viewBox="0 0 400 400" style={{ width: "100%", maxWidth: 420, filter: "drop-shadow(0 0 60px rgba(87,199,255,0.08))" }}>
+      <defs>
+        <radialGradient id="planetGrad" cx="38%" cy="35%">
+          <stop offset="0%"   stopColor="#0D2545" />
+          <stop offset="60%"  stopColor="#071428" />
+          <stop offset="100%" stopColor="#030A15" />
+        </radialGradient>
+        <radialGradient id="atmosGrad" cx="50%" cy="50%">
+          <stop offset="78%"  stopColor="transparent" />
+          <stop offset="100%" stopColor={sat.color + "30"} />
+        </radialGradient>
+        <radialGradient id="glowGrad" cx="50%" cy="50%">
+          <stop offset="0%"   stopColor={sat.color + "18"} />
+          <stop offset="100%" stopColor="transparent" />
+        </radialGradient>
+        <clipPath id="planetClip"><circle cx={cx} cy={cy} r={R} /></clipPath>
+        <filter id="satGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+
+      {/* ambient glow */}
+      <ellipse cx={cx} cy={cy} rx="180" ry="180" fill="url(#glowGrad)">
+        <animate attributeName="rx" values="170;185;170" dur="8s" repeatCount="indefinite"/>
+        <animate attributeName="ry" values="170;185;170" dur="8s" repeatCount="indefinite"/>
+      </ellipse>
+
+      {/* back orbit halves */}
+      {orbits.map((o, i) => (
+        <ellipse key={`ob${i}`}
+          cx={cx} cy={cy} rx={o.rx} ry={o.ry}
+          fill="none" stroke={o.color + "20"} strokeWidth="0.8"
+          transform={`rotate(${o.tilt} ${cx} ${cy})`}
+        />
+      ))}
+
+      {/* planet body */}
+      <circle cx={cx} cy={cy} r={R + 12} fill="url(#atmosGrad)" />
+      <circle cx={cx} cy={cy} r={R}      fill="url(#planetGrad)" />
+
+      {/* subtle land masses */}
+      <g clipPath="url(#planetClip)" opacity="0.4">
+        <path d="M155,178 Q162,170 175,173 Q185,176 188,185 Q182,195 170,192 Q158,190 155,178Z" fill="#0A2040" />
+        <path d="M185,165 Q196,158 208,162 Q215,170 210,180 Q200,184 192,178 Q185,172 185,165Z" fill="#0A2040" />
+        <path d="M168,195 Q178,190 190,198 Q193,208 184,213 Q174,212 168,204Z" fill="#0A2040" />
+        <path d="M205,185 Q218,180 228,188 Q232,198 222,203 Q212,204 206,196Z" fill="#0A2040" />
+      </g>
+
+      {/* atmosphere ring */}
+      <circle cx={cx} cy={cy} r={R} fill="none" stroke={sat.color + "35"} strokeWidth="3" />
+      <circle cx={cx} cy={cy} r={R + 6} fill="none" stroke={sat.color + "10"} strokeWidth="4" />
+
+      {/* Santiago dot */}
+      <circle cx={cx - 22} cy={cy + 18} r="3" fill="#ff4d6d" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx={cx - 22} cy={cy + 18} r="8" fill="none" stroke="#ff4d6d" strokeWidth="0.8" opacity="0.35"/>
+
+      {/* animated satellites on orbits */}
+      {orbits.map((o, i) => {
+        const id = `sat${i}`;
+        const dur = `${o.period}s`;
+        const ang = i * 120;
+        const rx = o.rx, ry = o.ry;
+        const x = cx + rx * Math.cos(d2r(ang));
+        const y = cy + ry * Math.sin(d2r(ang));
+        return (
+          <g key={id} transform={`rotate(${o.tilt} ${cx} ${cy})`}>
+            <circle cx={x} cy={y} r={o.r} fill={o.color} filter="url(#satGlow)">
+              <animateTransform attributeName="transform" type="rotate"
+                from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`}
+                dur={dur} repeatCount="indefinite"/>
+            </circle>
+            <circle cx={x} cy={y} r={o.r * 2.5} fill="none" stroke={o.color + "40"} strokeWidth="0.8">
+              <animateTransform attributeName="transform" type="rotate"
+                from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`}
+                dur={dur} repeatCount="indefinite"/>
+            </circle>
+          </g>
+        );
+      })}
+
+      {/* live label */}
+      {pos?.visible_from_santiago && (
+        <g>
+          <rect x="130" y="340" width="140" height="24" rx="12"
+            fill={sat.color + "18"} stroke={sat.color + "55"} strokeWidth="0.8"/>
+          <text x="200" y="356" textAnchor="middle" fontSize="9"
+            fill={sat.color} fontFamily="'IBM Plex Mono', monospace" letterSpacing="0.12em">
+            ● VISIBLE SOBRE SANTIAGO
+          </text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   GLOBE (sidebar)
+───────────────────────────────────────────── */
+function Globe({ sat, pos }) {
+  const W = 290, H = 290, R = 124, cx = 145, cy = 145, cLat = -20, cLon = -70;
+  function proj(lat, lon) {
+    const φ = d2r(lat), λ = d2r(lon), φ0 = d2r(cLat), λ0 = d2r(cLon);
+    const c = Math.sin(φ0)*Math.sin(φ) + Math.cos(φ0)*Math.cos(φ)*Math.cos(λ-λ0);
+    if (c < 0) return null;
+    return [cx + R*Math.cos(φ)*Math.sin(λ-λ0), cy - R*(Math.cos(φ0)*Math.sin(φ) - Math.sin(φ0)*Math.cos(φ)*Math.cos(λ-λ0))];
+  }
+  const sLat = pos?.lat ?? 0, sLon = pos?.lon ?? 0, alt = pos?.alt_km ?? 400;
+  const sXY = proj(sLat, sLon);
+  const sPt = proj(SANTIAGO.lat, SANTIAGO.lon);
+  const vr = visRadius(alt);
+  const vc = Array.from({length:60},(_,i)=>{
+    const a=(i/60)*2*Math.PI, vl=sLat+vr*Math.cos(a), vlo=sLon+(vr/Math.cos(d2r(sLat)))*Math.sin(a);
+    return proj(Math.max(-90,Math.min(90,vl)),((vlo+180)%360)-180);
+  }).filter(Boolean);
   const grid=[];
-  for(let lat=-80;lat<=80;lat+=20){const pts=[];for(let lon=-180;lon<=180;lon+=2){const xy=proj(lat,lon);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
-  for(let lon=-180;lon<=180;lon+=20){const pts=[];for(let lat=-90;lat<=90;lat+=2){const xy=proj(lat,lon);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
+  for(let la=-80;la<=80;la+=20){const pts=[];for(let lo=-180;lo<=180;lo+=3){const xy=proj(la,lo);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
+  for(let lo=-180;lo<=180;lo+=20){const pts=[];for(let la=-90;la<=90;la+=3){const xy=proj(la,lo);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
   const sa=[[-17,-72],[-10,-62],[-3,-43],[-5,-35],[-12,-37],[-18,-40],[-23,-43],[-28,-49],[-33,-52],[-38,-58],[-42,-64],[-46,-65],[-52,-69],[-55,-68],[-55,-65],[-52,-73],[-48,-75],[-42,-73],[-35,-72],[-27,-70],[-18,-70],[-12,-77],[-3,-80],[5,-77],[10,-75],[12,-72],[-17,-72]];
-  const toPath=pts=>pts.filter(Boolean).map((p,i)=>`${i===0?"M":"L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const sPt=proj(SANTIAGO.lat,SANTIAGO.lon);
-  const vr=visRadius(altKm);
-  const vc=Array.from({length:60},(_,i)=>{const a=(i/60)*2*Math.PI,vl=satLat+vr*Math.cos(a),vlo=satLon+(vr/Math.cos(d2r(satLat)))*Math.sin(a);return proj(Math.max(-90,Math.min(90,vl)),((vlo+180)%360)-180);}).filter(Boolean);
-  const trackPts=groundTrack(satLat,satLon,51.6,92);
+  const tp=pts=>pts.filter(Boolean).map((p,i)=>`${i===0?"M":"L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const track=groundTrack(sLat,sLon,51.6,92);
   const segs=[];let seg=[];
-  for(const pt of trackPts){const xy=proj(pt.lat,pt.lon);if(!xy){if(seg.length>1)segs.push({pts:seg});seg=[];continue;}seg.push({xy,past:pt.past});}
+  for(const pt of track){const xy=proj(pt.lat,pt.lon);if(!xy){if(seg.length>1)segs.push({pts:seg});seg=[];continue;}seg.push({xy,past:pt.past});}
   if(seg.length>1)segs.push({pts:seg});
-  const gid=`g${sat.id}`;
-  return(
+  const gid=`gl${sat.id}`;
+  return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",maxWidth:W}}>
       <defs>
-        <radialGradient id={`bg${gid}`} cx="40%" cy="35%"><stop offset="0%" stopColor="#0d2545"/><stop offset="100%" stopColor="#020810"/></radialGradient>
-        <radialGradient id={`gw${gid}`}><stop offset="0%" stopColor={sat.color} stopOpacity="0.18"/><stop offset="100%" stopColor={sat.color} stopOpacity="0"/></radialGradient>
-        <clipPath id={`cl${gid}`}><circle cx={cx} cy={cy} r={R}/></clipPath>
-        <filter id={`sf${gid}`}><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <radialGradient id={`gb${gid}`} cx="38%" cy="32%">
+          <stop offset="0%" stopColor="#0C1E38"/>
+          <stop offset="100%" stopColor="#030A14"/>
+        </radialGradient>
+        <radialGradient id={`ga${gid}`} cx="50%" cy="50%">
+          <stop offset="80%" stopColor="transparent"/>
+          <stop offset="100%" stopColor={sat.color+"28"}/>
+        </radialGradient>
+        <clipPath id={`gc${gid}`}><circle cx={cx} cy={cy} r={R}/></clipPath>
+        <filter id={`gg${gid}`}><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <circle cx={cx} cy={cy} r={R+22} fill={`url(#gw${gid})`}/>
-      <circle cx={cx} cy={cy} r={R} fill={`url(#bg${gid})`} stroke={sat.color+"44"} strokeWidth="1.5"/>
-      <g clipPath={`url(#cl${gid})`}>
-        {grid.map((pts,i)=><polyline key={i} points={pts.map(p=>p.join(",")).join(" ")} fill="none" stroke="#0d2545" strokeWidth="0.6" opacity="0.9"/>)}
-        <path d={toPath(sa.map(([la,lo])=>proj(la,lo)))} fill="#0a1e35" stroke="#1a4a7a" strokeWidth="1"/>
-        {vc.length>3&&<polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"18"} stroke={sat.color+"55"} strokeWidth="1.2" strokeDasharray="5 3"/>}
-        {segs.map((s,i)=><polyline key={i} points={s.pts.map(p=>p.xy.join(",")).join(" ")} fill="none" stroke={sat.color} strokeWidth={2} opacity={0.85}/>)}
-        {sPt&&<><circle cx={sPt[0]} cy={sPt[1]} r="10" fill="none" stroke="#f43f5e" strokeWidth="1" opacity="0.4"/><circle cx={sPt[0]} cy={sPt[1]} r="5" fill="none" stroke="#f43f5e" strokeWidth="1.5"/><circle cx={sPt[0]} cy={sPt[1]} r="2.5" fill="#f43f5e"/><text x={sPt[0]+9} y={sPt[1]-7} fontSize="9" fill="#f43f5e" fontFamily="monospace" fontWeight="700">Santiago</text></>}
-        {sXY&&<><circle cx={sXY[0]} cy={sXY[1]} r="20" fill={sat.color+"0d"}/><circle cx={sXY[0]} cy={sXY[1]} r="7" fill={sat.color} filter={`url(#sf${gid})`}/><circle cx={sXY[0]} cy={sXY[1]} r="13" fill="none" stroke={sat.color} strokeWidth="1.5" opacity="0.5"/><text x={sXY[0]+15} y={sXY[1]-11} fontSize="9" fill={sat.color} fontFamily="monospace" fontWeight="700">{sat.name}</text></>}
+      <circle cx={cx} cy={cy} r={R+16} fill={`url(#ga${gid})`}/>
+      <circle cx={cx} cy={cy} r={R} fill={`url(#gb${gid})`} stroke={sat.color+"28"} strokeWidth="1"/>
+      <g clipPath={`url(#gc${gid})`}>
+        {grid.map((pts,i)=><polyline key={i} points={pts.map(p=>p.join(",")).join(" ")} fill="none" stroke="#0C2040" strokeWidth="0.5" opacity="0.9"/>)}
+        <path d={tp(sa.map(([la,lo])=>proj(la,lo)))} fill="#091C34" stroke="#183660" strokeWidth="1"/>
+        {vc.length>3&&<polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"10"} stroke={sat.color+"38"} strokeWidth="1" strokeDasharray="4 4"/>}
+        {segs.map((s,i)=><polyline key={i} points={s.pts.map(p=>p.xy.join(",")).join(" ")} fill="none" stroke={sat.color} strokeWidth="1.6" opacity={0.88}/>)}
+        {sPt&&<><circle cx={sPt[0]} cy={sPt[1]} r="8" fill="none" stroke="#ff4d6d" strokeWidth="0.8" opacity="0.35"/><circle cx={sPt[0]} cy={sPt[1]} r="2.5" fill="#ff4d6d"/><text x={sPt[0]+7} y={sPt[1]-5} fontSize="7.5" fill="#ff4d6d" fontFamily="'IBM Plex Mono',monospace">Santiago</text></>}
+        {sXY&&<><circle cx={sXY[0]} cy={sXY[1]} r="20" fill={sat.color+"0a"}/><circle cx={sXY[0]} cy={sXY[1]} r="7" fill={sat.color} filter={`url(#gg${gid})`}/><circle cx={sXY[0]} cy={sXY[1]} r="13" fill="none" stroke={sat.color} strokeWidth="1" opacity="0.4"/><text x={sXY[0]+13} y={sXY[1]-9} fontSize="8" fill={sat.color} fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{sat.name}</text></>}
       </g>
-      <circle cx={cx} cy={cy} r={R} fill="none" stroke={sat.color+"44"} strokeWidth="1.5"/>
-      {pos&&<text x="10" y={H-10} fontSize="8" fill={sat.color+"99"} fontFamily="monospace">{`${Math.abs(satLat).toFixed(1)}°${satLat>=0?"N":"S"}  ${Math.abs(satLon).toFixed(1)}°${satLon>=0?"E":"O"}`}</text>}
+      <circle cx={cx} cy={cy} r={R} fill="none" stroke={sat.color+"28"} strokeWidth="1"/>
     </svg>
   );
 }
 
-// ── Chile map ─────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   CHILE MAP
+───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
-  const W=260,H=390,latMin=-56,latMax=-17,lonMin=-76,lonMax=-64;
-  const proj=(lat,lon)=>[((lon-lonMin)/(lonMax-lonMin))*(W-40)+20,((latMax-lat)/(latMax-latMin))*(H-40)+20];
-  const satLat=pos?.lat??0,satLon=pos?.lon??0,altKm=pos?.alt_km??400;
-  const sXY=proj(satLat,satLon),stXY=proj(SANTIAGO.lat,SANTIAGO.lon);
+  const W=255,H=385,latMin=-56,latMax=-17,lonMin=-76,lonMax=-64;
+  const proj=(la,lo)=>[((lo-lonMin)/(lonMax-lonMin))*(W-40)+20,((latMax-la)/(latMax-latMin))*(H-40)+20];
+  const sLat=pos?.lat??0,sLon=pos?.lon??0,alt=pos?.alt_km??400;
+  const sXY=proj(sLat,sLon),stXY=proj(SANTIAGO.lat,SANTIAGO.lon);
   const inView=pos?.visible_from_santiago??false;
-  const vr=visRadius(altKm);
-  const vc=Array.from({length:72},(_,i)=>{const a=(i/72)*2*Math.PI;return proj(satLat+vr*Math.cos(a),satLon+(vr/Math.cos(d2r(satLat)))*Math.sin(a));});
+  const vr=visRadius(alt);
+  const vc=Array.from({length:72},(_,i)=>{const a=(i/72)*2*Math.PI;return proj(sLat+vr*Math.cos(a),sLon+(vr/Math.cos(d2r(sLat)))*Math.sin(a));});
   const chile=[[-17.5,-70],[-18,-70.3],[-20,-70.1],[-22,-70.1],[-24,-70.6],[-26,-70.8],[-28,-71.3],[-30,-71.5],[-32,-71.7],[-33.4,-71.8],[-35,-72],[-37,-73.5],[-38,-73.5],[-40,-73.5],[-42,-73.5],[-44,-75],[-46,-75],[-48,-75.5],[-50,-75],[-52,-74],[-53,-70.9],[-54,-69],[-55,-68],[-55,-65],[-53,-63],[-51,-59],[-49,-57],[-47,-65],[-44,-66],[-41,-62],[-38,-58],[-36,-57],[-33,-52],[-30,-51],[-27,-50],[-24,-67],[-22,-68],[-20,-70],[-17.5,-70]];
-  const cities=[{name:"Santiago",lat:-33.4489,lon:-70.6693,main:true},{name:"Valparaíso",lat:-33.05,lon:-71.6},{name:"Concepción",lat:-36.82,lon:-73.05},{name:"Antofagasta",lat:-23.65,lon:-70.4},{name:"Pto. Montt",lat:-41.47,lon:-72.94}];
-  const trk=groundTrack(satLat,satLon,97,95,120,0.3).filter(pt=>pt.lat>=latMin-5&&pt.lat<=latMax+5&&pt.lon>=lonMin-3&&pt.lon<=lonMax+3);
-  const gid2=`c${sat.id}`;
-  return(
+  const cities=[{name:"Santiago",lat:-33.45,lon:-70.67,main:true},{name:"Valparaíso",lat:-33.05,lon:-71.6},{name:"Concepción",lat:-36.82,lon:-73.05},{name:"Antofagasta",lat:-23.65,lon:-70.4},{name:"Pto. Montt",lat:-41.47,lon:-72.94}];
+  const trk=groundTrack(sLat,sLon,97,95,120,0.3).filter(p=>p.lat>=latMin-5&&p.lat<=latMax+5&&p.lon>=lonMin-3&&p.lon<=lonMax+3);
+  const gid=`cm${sat.id}`;
+  return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",maxWidth:W}}>
       <defs>
-        <radialGradient id={`cbg${gid2}`}><stop offset="0%" stopColor="#0a1628"/><stop offset="100%" stopColor="#020810"/></radialGradient>
-        <filter id={`csg${gid2}`}><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <clipPath id={`ccl${gid2}`}><rect x="0" y="0" width={W} height={H}/></clipPath>
+        <radialGradient id={`cb${gid}`}><stop offset="0%" stopColor="#091828"/><stop offset="100%" stopColor="#030810"/></radialGradient>
+        <filter id={`cs${gid}`}><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <clipPath id={`cc${gid}`}><rect width={W} height={H}/></clipPath>
       </defs>
-      <rect width={W} height={H} rx="12" fill={`url(#cbg${gid2})`}/>
-      {[-70,-65,-60,-55,-50,-45,-40,-35,-30,-25,-20].map(lat=>{const[,y]=proj(lat,lonMin);return y>=0&&y<=H?<line key={lat} x1="0" y1={y} x2={W} y2={y} stroke="#0d2545" strokeWidth="0.6" strokeDasharray="3 5"/>:null;})}
-      {[-75,-70,-65].map(lon=>{const[x]=proj(latMin,lon);return x>=0&&x<=W?<line key={lon} x1={x} y1="0" x2={x} y2={H} stroke="#0d2545" strokeWidth="0.6" strokeDasharray="3 5"/>:null;})}
-      <g clipPath={`url(#ccl${gid2})`}>
-        <polygon points={chile.map(([la,lo])=>proj(la,lo).join(",")).join(" ")} fill="#0a1e35" stroke="#1a4a7a" strokeWidth="1.2"/>
-        <polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"18"} stroke={sat.color+"66"} strokeWidth="1.5" strokeDasharray="6 4"/>
-        {inView&&<line x1={sXY[0]} y1={sXY[1]} x2={stXY[0]} y2={stXY[1]} stroke={sat.color} strokeWidth="1" strokeDasharray="5 4" opacity="0.7"/>}
-        {trk.length>1&&trk.map((pt,i)=>{if(i===0)return null;const pv=trk[i-1],a=proj(pv.lat,pv.lon),b=proj(pt.lat,pt.lon);return<line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={sat.color} strokeWidth={pt.past?1:2} opacity={pt.past?0.2:0.8}/>;})}
-        {cities.map(c=>{const[cx2,cy2]=proj(c.lat,c.lon);if(cx2<-5||cx2>W+5||cy2<-5||cy2>H+5)return null;return<g key={c.name}>{c.main&&<circle cx={cx2} cy={cy2} r="10" fill="#f43f5e0d"/>}<circle cx={cx2} cy={cy2} r={c.main?4:2.5} fill={c.main?"#f43f5e":"#4a7fa5"}/><text x={cx2+7} y={cy2+4} fontSize={c.main?9:7.5} fill={c.main?"#f87171":"#4a7fa5"} fontFamily="monospace">{c.name}</text></g>;})}
-        {sXY[0]>-30&&sXY[0]<W+30&&sXY[1]>-30&&sXY[1]<H+30&&<><circle cx={sXY[0]} cy={sXY[1]} r="24" fill={sat.color+"0d"}/><circle cx={sXY[0]} cy={sXY[1]} r="9" fill={sat.color} filter={`url(#csg${gid2})`} opacity="0.9"/><circle cx={sXY[0]} cy={sXY[1]} r="15" fill="none" stroke={sat.color} strokeWidth="1.5" opacity="0.5"/><text x={sXY[0]+17} y={sXY[1]-13} fontSize="9" fill={sat.color} fontFamily="monospace" fontWeight="700">{sat.name}</text></>}
+      <rect width={W} height={H} rx="10" fill={`url(#cb${gid})`}/>
+      <g clipPath={`url(#cc${gid})`}>
+        {[-70,-65,-60,-55,-50,-45,-40,-35,-30,-25,-20].map(la=>{const[,y]=proj(la,lonMin);return y>=0&&y<=H?<line key={la} x1="0" y1={y} x2={W} y2={y} stroke="#0C2040" strokeWidth="0.5" strokeDasharray="3 6"/>:null;})}
+        {[-75,-70,-65].map(lo=>{const[x]=proj(latMin,lo);return x>=0&&x<=W?<line key={lo} x1={x} y1="0" x2={x} y2={H} stroke="#0C2040" strokeWidth="0.5" strokeDasharray="3 6"/>:null;})}
+        <polygon points={chile.map(([la,lo])=>proj(la,lo).join(",")).join(" ")} fill="#091C34" stroke="#183660" strokeWidth="1.2"/>
+        <polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"12"} stroke={sat.color+"50"} strokeWidth="1.4" strokeDasharray="5 4"/>
+        {inView&&<line x1={sXY[0]} y1={sXY[1]} x2={stXY[0]} y2={stXY[1]} stroke={sat.color} strokeWidth="1" strokeDasharray="4 4" opacity="0.55"/>}
+        {trk.length>1&&trk.map((pt,i)=>{if(!i)return null;const pv=trk[i-1],a=proj(pv.lat,pv.lon),b=proj(pt.lat,pt.lon);return<line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={sat.color} strokeWidth={pt.past?1:1.8} opacity={pt.past?0.18:0.82}/>;},)}
+        {cities.map(c=>{const[cx2,cy2]=proj(c.lat,c.lon);if(cx2<-5||cx2>W+5||cy2<-5||cy2>H+5)return null;return<g key={c.name}><circle cx={cx2} cy={cy2} r={c.main?3.5:2.2} fill={c.main?"#ff4d6d":"#2D5070"}/>{c.main&&<circle cx={cx2} cy={cy2} r="8" fill="none" stroke="#ff4d6d" strokeWidth="0.7" opacity="0.3"/>}<text x={cx2+7} y={cy2+4} fontSize={c.main?8:7} fill={c.main?"#ff4d6d":"#2D5070"} fontFamily="'IBM Plex Mono',monospace">{c.name}</text></g>;})}
+        {sXY[0]>-30&&sXY[0]<W+30&&sXY[1]>-30&&sXY[1]<H+30&&<><circle cx={sXY[0]} cy={sXY[1]} r="20" fill={sat.color+"0d"}/><circle cx={sXY[0]} cy={sXY[1]} r="8" fill={sat.color} filter={`url(#cs${gid})`}/><circle cx={sXY[0]} cy={sXY[1]} r="14" fill="none" stroke={sat.color} strokeWidth="1" opacity="0.38"/><text x={sXY[0]+15} y={sXY[1]-11} fontSize="8" fill={sat.color} fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{sat.name}</text></>}
       </g>
-      <rect x="8" y="8" width={inView?138:152} height="22" rx="5" fill={inView?sat.color+"22":"rgba(0,0,0,0.5)"} stroke={inView?sat.color+"55":"rgba(255,255,255,0.1)"} strokeWidth="1"/>
-      <text x="15" y="23" fontSize="8.5" fill={inView?sat.color:"#475569"} fontFamily="monospace">{inView?"✓ EN RANGO DE SANTIAGO":"○ FUERA DE RANGO"}</text>
-      {pos&&<text x={W-8} y={H-8} fontSize="7.5" fill={sat.color+"77"} fontFamily="monospace" textAnchor="end">{`${Math.abs(satLat).toFixed(1)}°S  ${Math.abs(satLon).toFixed(1)}°O`}</text>}
+      <text x="12" y="22" fontSize="7.5" fill={inView?sat.color:"#2D5070"} fontFamily="'IBM Plex Mono',monospace" letterSpacing="0.1em">
+        {inView?"✓ EN RANGO DE SANTIAGO":"○ FUERA DE RANGO"}
+      </text>
     </svg>
   );
 }
 
-// ── Sky diagram ───────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   SKY DIAGRAM
+───────────────────────────────────────────── */
 function SkyDiagram({ pass, color }) {
-  const cx=110,cy=110,R=90;
+  const cx=108,cy=108,R=86;
   const toXY=(az,el)=>{const r=R*(1-el/90),a=(az-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
   const pts=Array.from({length:21},(_,i)=>{const f=i/20,az=pass.rise_az+(pass.set_az-pass.rise_az)*f,el=f<0.5?pass.max_el*f*2:pass.max_el*(1-f)*2;return toXY(az,Math.max(0,el));});
   const d=pts.map((p,i)=>`${i===0?"M":"L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
   const[mx,my]=toXY(pass.max_az,pass.max_el);
   return(
-    <svg viewBox="0 0 220 220" style={{width:"100%",maxWidth:190}}>
-      <circle cx={cx} cy={cy} r={R+4} fill="#060d18" stroke="#0d2545" strokeWidth="1"/>
-      {[30,60,90].map(r=><circle key={r} cx={cx} cy={cy} r={R*r/90} fill="none" stroke="#0d2545" strokeWidth="0.8" strokeDasharray="3 4"/>)}
-      {[0,90,180,270].map(a=>{const rad=(a-90)*Math.PI/180;return<line key={a} x1={cx+8*Math.cos(rad)} y1={cy+8*Math.sin(rad)} x2={cx+R*Math.cos(rad)} y2={cy+R*Math.sin(rad)} stroke="#0d2545" strokeWidth="0.8"/>;})}
-      {[["N",0],["E",90],["S",180],["O",270]].map(([l,a])=>{const rad=(a-90)*Math.PI/180;return<text key={l} x={cx+(R+14)*Math.cos(rad)} y={cy+(R+14)*Math.sin(rad)} textAnchor="middle" dominantBaseline="middle" fontSize="10" fill="#2a5a7a" fontFamily="monospace" fontWeight="700">{l}</text>;})}
-      <path d={d} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" opacity="0.12"/>
-      <path d={d} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" opacity="0.9"/>
+    <svg viewBox="0 0 216 216" style={{width:"100%",maxWidth:185}}>
+      <circle cx={cx} cy={cy} r={R+5} fill="#05080E" stroke="#0C2040" strokeWidth="1"/>
+      {[30,60,90].map(r=><circle key={r} cx={cx} cy={cy} r={R*r/90} fill="none" stroke="#0C2040" strokeWidth="0.7" strokeDasharray="2 4"/>)}
+      {[0,90,180,270].map(a=>{const rad=(a-90)*Math.PI/180;return<line key={a} x1={cx+7*Math.cos(rad)} y1={cy+7*Math.sin(rad)} x2={cx+R*Math.cos(rad)} y2={cy+R*Math.sin(rad)} stroke="#0C2040" strokeWidth="0.7"/>;},)}
+      {[["N",0],["E",90],["S",180],["O",270]].map(([l,a])=>{const rad=(a-90)*Math.PI/180;return<text key={l} x={cx+(R+13)*Math.cos(rad)} y={cy+(R+13)*Math.sin(rad)} textAnchor="middle" dominantBaseline="middle" fontSize="9" fill="#1E4060" fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{l}</text>;})}
+      <path d={d} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round" opacity="0.08"/>
+      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" opacity="0.92"/>
       <circle cx={pts[0][0]} cy={pts[0][1]} r="4" fill="#22c55e"/>
       <circle cx={pts[pts.length-1][0]} cy={pts[pts.length-1][1]} r="4" fill="#ef4444"/>
-      <circle cx={mx} cy={my} r="6" fill={color}/>
-      <circle cx={mx} cy={my} r="11" fill="none" stroke={color} strokeWidth="1.2" opacity="0.5"/>
+      <circle cx={mx} cy={my} r="5.5" fill={color}/>
+      <circle cx={mx} cy={my} r="11" fill="none" stroke={color} strokeWidth="1" opacity="0.35"/>
     </svg>
   );
 }
 
-// ── Live panel ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   LIVE DATA PANEL
+───────────────────────────────────────────── */
 function LivePanel({ pos, sat }) {
   if (!pos) return null;
   return (
-    <div style={{borderRadius:12,padding:16,background:`linear-gradient(135deg,${sat.color}0d,rgba(0,0,0,0.3))`,border:`1px solid ${sat.color}33`,transition:"all 0.4s"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-        <div style={{width:7,height:7,borderRadius:"50%",background:sat.color,boxShadow:`0 0 8px ${sat.color}`,animation:"pulse 1.5s infinite"}}/>
-        <div style={{fontSize:9,fontFamily:"monospace",letterSpacing:"0.2em",color:sat.color,textTransform:"uppercase"}}>Posición en vivo</div>
-        <div style={{marginLeft:"auto",fontSize:8,color:"#334155",fontFamily:"monospace"}}>↻ cada 5s</div>
+    <div style={{borderRadius:14,padding:"16px 18px",background:`linear-gradient(145deg,${sat.color}09,rgba(3,8,20,0.55))`,border:`1px solid ${sat.color}1E`,backdropFilter:"blur(10px)",transition:"all 0.6s"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+        <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:sat.color,boxShadow:`0 0 8px ${sat.color}`,animation:"livePulse 2.2s infinite"}}/>
+        <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.22em",color:sat.color,textTransform:"uppercase"}}>Posición en vivo</span>
+        <span style={{marginLeft:"auto",fontSize:8,color:"#1E3A50",fontFamily:"monospace"}}>↻ 5s</span>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
         {[
-          ["Latitud",   `${Math.abs(pos.lat).toFixed(2)}°${pos.lat>=0?"N":"S"}`],
-          ["Longitud",  `${Math.abs(pos.lon).toFixed(2)}°${pos.lon>=0?"E":"O"}`],
+          ["Latitud",   `${Math.abs(pos.lat).toFixed(2)}° ${pos.lat>=0?"N":"S"}`],
+          ["Longitud",  `${Math.abs(pos.lon).toFixed(2)}° ${pos.lon>=0?"E":"O"}`],
           ["Altitud",   `${pos.alt_km} km`],
           ["Distancia", `${pos.distance_km?.toLocaleString()} km`],
           ["Elevación", `${pos.elevation_from_santiago}°`],
           ["Azimut",    `${pos.azimuth_from_santiago}° ${azLabel(pos.azimuth_from_santiago)}`],
         ].map(([l,v])=>(
-          <div key={l} style={{padding:"7px 10px",borderRadius:8,background:"rgba(0,0,0,0.3)"}}>
-            <div style={{fontSize:8,fontFamily:"monospace",color:"#334155",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
-            <div style={{fontSize:12,fontFamily:"monospace",color:"white",fontWeight:700}}>{v}</div>
+          <div key={l} style={{padding:"9px 11px",borderRadius:9,background:"rgba(3,8,20,0.55)",border:"1px solid rgba(255,255,255,0.04)"}}>
+            <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"#1E3A50",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
+            <div style={{fontSize:12.5,fontFamily:"'IBM Plex Mono',monospace",color:"#F0F4F8",fontWeight:500,letterSpacing:"0.02em"}}>{v}</div>
           </div>
         ))}
       </div>
-      <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:pos.visible_from_santiago?"#22c55e0d":"rgba(0,0,0,0.2)",border:`1px solid ${pos.visible_from_santiago?"#22c55e33":"rgba(255,255,255,0.05)"}`}}>
-        <span style={{fontSize:11,color:pos.visible_from_santiago?"#4ade80":"#475569",fontFamily:"monospace"}}>
+      <div style={{marginTop:10,padding:"9px 12px",borderRadius:9,background:pos.visible_from_santiago?sat.color+"0c":"rgba(3,8,20,0.4)",border:`1px solid ${pos.visible_from_santiago?sat.color+"2A":"rgba(255,255,255,0.04)"}`}}>
+        <span style={{fontSize:10.5,color:pos.visible_from_santiago?sat.color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace"}}>
           {pos.visible_from_santiago?"✓ Sobre el horizonte de Santiago":"○ Bajo el horizonte de Santiago"}
         </span>
       </div>
@@ -226,53 +320,54 @@ function LivePanel({ pos, sat }) {
   );
 }
 
-// ── Pass card ─────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   PASS CARD
+───────────────────────────────────────────── */
 function PassCard({ pass, sat, isNext }) {
-  const[open,setOpen]=useState(false);
-  const[cd,setCd]=useState(null);
-  useEffect(()=>{
-    if(!isNext)return;
-    const t=setInterval(()=>setCd(countdown(pass.rise)),1000);
-    return()=>clearInterval(t);
-  },[isNext,pass.rise]);
-  const q=pass.max_el>=60?"ÓPTIMO":pass.max_el>=30?"BUENO":"BAJO";
-  const qc=pass.max_el>=60?"#34d399":pass.max_el>=30?"#fbbf24":"#64748b";
-  const dur=`${Math.floor(pass.duration/60)}m ${pass.duration%60}s`;
-  return(
-    <div onClick={()=>setOpen(!open)} style={{background:open?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.02)",border:`1px solid ${isNext?sat.color+"55":"rgba(255,255,255,0.07)"}`,borderLeft:`3px solid ${isNext?sat.color:"transparent"}`,borderRadius:10,padding:"13px 17px",cursor:"pointer",transition:"all 0.2s",marginBottom:8}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        <div style={{minWidth:80}}>
-          <div style={{fontFamily:"monospace",fontSize:20,fontWeight:700,color:"white"}}>{fmtTime(pass.rise)}</div>
-          <div style={{fontSize:10,color:"#475569",marginTop:1}}>{fmtDate(pass.rise)}</div>
+  const [open, setOpen] = useState(false);
+  const [cd, setCd]     = useState(null);
+  useEffect(() => {
+    if (!isNext) return;
+    const t = setInterval(() => setCd(countdown(pass.rise)), 1000);
+    return () => clearInterval(t);
+  }, [isNext, pass.rise]);
+  const q  = pass.max_el >= 60 ? "ÓPTIMO" : pass.max_el >= 30 ? "BUENO" : "BAJO";
+  const qc = pass.max_el >= 60 ? "#34d399"  : pass.max_el >= 30 ? "#fbbf24" : "#334155";
+  const dur= `${Math.floor(pass.duration/60)}m ${pass.duration%60}s`;
+  return (
+    <div onClick={()=>setOpen(!open)} style={{background:open?"rgba(255,255,255,0.025)":"rgba(255,255,255,0.014)",border:`1px solid ${isNext?sat.color+"3A":"rgba(255,255,255,0.055)"}`,borderLeft:`2px solid ${isNext?sat.color:"transparent"}`,borderRadius:12,padding:"14px 18px",cursor:"pointer",transition:"all 0.2s",marginBottom:7,backdropFilter:"blur(8px)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+        <div style={{minWidth:76}}>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:23,fontWeight:600,color:"#F0F4F8",letterSpacing:"-0.01em"}}>{fmtTime(pass.rise)}</div>
+          <div style={{fontSize:9.5,color:"#334155",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{fmtDate(pass.rise)}</div>
         </div>
         <div style={{display:"flex",gap:5,flex:1,flexWrap:"wrap",alignItems:"center"}}>
-          {isNext&&<span style={{fontSize:8,fontFamily:"monospace",letterSpacing:"0.12em",padding:"2px 7px",borderRadius:20,background:sat.color+"22",color:sat.color,border:`1px solid ${sat.color}55`}}>PRÓXIMO</span>}
-          {pass.visible&&<span style={{fontSize:8,fontFamily:"monospace",padding:"2px 7px",borderRadius:20,background:"#22c55e15",color:"#4ade80",border:"1px solid #22c55e33"}}>👁 VISIBLE</span>}
-          <span style={{fontSize:8,fontFamily:"monospace",padding:"2px 7px",borderRadius:20,background:qc+"15",color:qc,border:`1px solid ${qc}33`}}>{q} {pass.max_el}°</span>
+          {isNext&&<span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.15em",padding:"3px 8px",borderRadius:20,background:sat.color+"16",color:sat.color,border:`1px solid ${sat.color}3A`}}>PRÓXIMO</span>}
+          {pass.visible&&<span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 8px",borderRadius:20,background:"#22c55e10",color:"#4ade80",border:"1px solid #22c55e28"}}>● VISIBLE</span>}
+          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 8px",borderRadius:20,background:qc+"10",color:qc,border:`1px solid ${qc}28`}}>{q} {pass.max_el}°</span>
         </div>
         <div style={{textAlign:"right"}}>
-          {isNext&&cd ? (
-            <div style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:sat.color,letterSpacing:"0.08em"}}>{cd}</div>
-          ) : (
-            <div style={{fontSize:12,color:sat.color,fontFamily:"monospace",fontWeight:700}}>{timeUntil(pass.rise)}</div>
-          )}
-          <div style={{fontSize:10,color:"#334155",marginTop:1}}>{dur}</div>
+          {isNext&&cd
+            ?<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:18,fontWeight:600,color:sat.color,letterSpacing:"0.06em"}}>{cd}</div>
+            :<div style={{fontSize:12.5,color:sat.color,fontFamily:"'IBM Plex Mono',monospace",fontWeight:500}}>{timeUntil(pass.rise)}</div>
+          }
+          <div style={{fontSize:9.5,color:"#1E3A50",marginTop:2,fontFamily:"monospace"}}>{dur}</div>
         </div>
-        <span style={{color:"#334155",fontSize:12}}>{open?"▲":"▼"}</span>
+        <span style={{color:"#1E3A50",fontSize:11}}>{open?"▲":"▼"}</span>
       </div>
       {open&&(
-        <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.06)",display:"grid",gridTemplateColumns:"190px 1fr",gap:18}}>
+        <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.045)",display:"grid",gridTemplateColumns:"188px 1fr",gap:20}}>
           <SkyDiagram pass={pass} color={sat.color}/>
           <div style={{display:"flex",flexDirection:"column",gap:9,justifyContent:"center"}}>
             {[["Salida",`${fmtTime(pass.rise)} · ${azLabel(pass.rise_az)} (${pass.rise_az}°)`],["Máximo",`${fmtTime(pass.max)} · ${pass.max_el}° elevación`],["Ocaso",`${fmtTime(pass.set)} · ${azLabel(pass.set_az)} (${pass.set_az}°)`],["Duración",dur],["Visibilidad",pass.visible?"✓ A simple vista":"○ Necesita telescopio"]].map(([l,v])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.04)",paddingBottom:7}}>
-                <span style={{fontSize:9,fontFamily:"monospace",color:"#475569",letterSpacing:"0.12em",textTransform:"uppercase"}}>{l}</span>
-                <span style={{fontSize:11,fontFamily:"monospace",color:l==="Visibilidad"?(pass.visible?"#4ade80":"#64748b"):"white"}}>{v}</span>
+              <div key={l} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.038)",paddingBottom:7}}>
+                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"#334155",letterSpacing:"0.12em",textTransform:"uppercase"}}>{l}</span>
+                <span style={{fontSize:10.5,fontFamily:"'IBM Plex Mono',monospace",color:l==="Visibilidad"?(pass.visible?"#4ade80":"#334155"):"#E0E8F0"}}>{v}</span>
               </div>
             ))}
-            <div style={{marginTop:4,padding:"10px 12px",background:sat.color+"0d",borderRadius:8,border:`1px solid ${sat.color}22`}}>
-              <div style={{fontSize:9,color:"#475569",fontFamily:"monospace",letterSpacing:"0.1em",marginBottom:4}}>CONSEJO</div>
-              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose. Alcanzará ${pass.max_el}° de altura.`:`Con ${pass.max_el}° de elevación máxima se recomienda usar binoculares.`}</div>
+            <div style={{marginTop:5,padding:"11px 13px",background:sat.color+"09",borderRadius:10,border:`1px solid ${sat.color}16`}}>
+              <div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginBottom:5,textTransform:"uppercase"}}>Consejo de observación</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares para mejor visibilidad.`}</div>
             </div>
           </div>
         </div>
@@ -281,43 +376,29 @@ function PassCard({ pass, sat, isNext }) {
   );
 }
 
-// ── News card ─────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   NEWS CARD
+───────────────────────────────────────────── */
 function NewsCard({ article }) {
-  const badge = sourceBadgeColor(article.source);
+  const src = article.source?.toUpperCase() ?? "";
+  const bc = src.includes("NASA") ? { bg:"#081C3A",color:"#57C7FF",b:"#57C7FF18" }
+           : src.includes("ESA")  ? { bg:"#0C1830",color:"#7B9FD8",b:"#7B9FD818" }
+           : src.includes("SPACE") ? { bg:"#101010",color:"#888",b:"#88888818" }
+           :                        { bg:"#0C1A26",color:"#64748b",b:"#64748b18" };
   return (
-    <div style={{borderRadius:14,overflow:"hidden",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",transition:"border-color 0.2s",display:"flex",flexDirection:"column"}}>
-      {/* Imagen */}
-      {article.image ? (
-        <div style={{height:160,overflow:"hidden",background:"#0a1628",flexShrink:0}}>
-          <img
-            src={article.image}
-            alt={article.title}
-            style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.85}}
-            onError={e=>{e.target.parentElement.style.display="none";}}
-          />
-        </div>
-      ) : (
-        <div style={{height:100,background:"linear-gradient(135deg,#0a1628,#020810)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>🛰</div>
-      )}
-      {/* Content */}
-      <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10,flex:1}}>
-        {/* Source + date */}
+    <div style={{borderRadius:16,overflow:"hidden",background:"rgba(255,255,255,0.014)",border:"1px solid rgba(255,255,255,0.065)",backdropFilter:"blur(10px)",display:"flex",flexDirection:"column",transition:"border-color 0.2s"}}>
+      {article.image
+        ?<div style={{height:148,overflow:"hidden",flexShrink:0}}><img src={article.image} alt={article.title} style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.78}} onError={e=>{e.target.parentElement.style.display="none";}}/></div>
+        :<div style={{height:82,background:"linear-gradient(135deg,#091828,#030810)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,opacity:0.5}}>🛰</div>
+      }
+      <div style={{padding:"13px 15px",display:"flex",flexDirection:"column",gap:9,flex:1}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-          <span style={{fontSize:9,fontFamily:"monospace",letterSpacing:"0.12em",padding:"3px 8px",borderRadius:4,background:badge.bg,color:badge.color}}>{article.source.toUpperCase()}</span>
-          <span style={{fontSize:10,color:"#334155",fontFamily:"monospace"}}>{article.published}</span>
+          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em",padding:"3px 8px",borderRadius:4,background:bc.bg,color:bc.color,border:`1px solid ${bc.b}`}}>{src}</span>
+          <span style={{fontSize:8.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace"}}>{article.published}</span>
         </div>
-        {/* Title */}
-        <div style={{fontSize:14,fontWeight:600,color:"white",lineHeight:1.4}}>{article.title}</div>
-        {/* Summary */}
-        <div style={{fontSize:12,color:"#64748b",lineHeight:1.6,flex:1}}>{article.summary}</div>
-        {/* Link */}
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e=>e.stopPropagation()}
-          style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:11,color:"#38bdf8",fontFamily:"monospace",textDecoration:"none",marginTop:4,padding:"6px 10px",borderRadius:7,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.2)",width:"fit-content",transition:"all 0.2s"}}
-        >
+        <div style={{fontSize:13,fontWeight:500,color:"#E0E8F0",lineHeight:1.45,letterSpacing:"-0.01em"}}>{article.title}</div>
+        <div style={{fontSize:11.5,color:"#334155",lineHeight:1.65,flex:1}}>{article.summary}</div>
+        <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:9.5,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",marginTop:3,padding:"5px 10px",borderRadius:7,background:"#57C7FF09",border:"1px solid #57C7FF1E",width:"fit-content",letterSpacing:"0.06em"}}>
           Leer en {article.source} →
         </a>
       </div>
@@ -325,273 +406,335 @@ function NewsCard({ article }) {
   );
 }
 
-// ── Notif banner ──────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   NOTIF BANNER
+───────────────────────────────────────────── */
 function NotifBanner({ next, sat, onDismiss }) {
-  if(!next)return null;
-  const diff=new Date(next.rise)-new Date();
-  if(diff<0||diff>30*60000)return null;
-  const m=Math.floor(diff/60000);
-  return(
-    <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:100,padding:"12px 20px",borderRadius:12,background:`linear-gradient(135deg,${sat.color}22,rgba(6,13,24,0.96))`,border:`1px solid ${sat.color}88`,backdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:14,boxShadow:`0 0 30px ${sat.color}33`,maxWidth:"90vw"}}>
-      <div style={{fontSize:22}}>🛰</div>
+  if (!next) return null;
+  const diff = new Date(next.rise) - new Date();
+  if (diff < 0 || diff > 30 * 60000) return null;
+  const m = Math.floor(diff / 60000);
+  return (
+    <div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",zIndex:200,padding:"12px 20px",borderRadius:14,background:`linear-gradient(135deg,${sat.color}18,rgba(3,8,20,0.96))`,border:`1px solid ${sat.color}55`,backdropFilter:"blur(22px)",display:"flex",alignItems:"center",gap:15,boxShadow:`0 0 50px ${sat.color}18`,maxWidth:"86vw"}}>
+      <span style={{fontSize:18}}>🛰</span>
       <div>
-        <div style={{fontSize:12,fontWeight:700,color:sat.color,fontFamily:"monospace",letterSpacing:"0.1em"}}>¡PASE EN {m} MINUTOS!</div>
-        <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{sat.name} · {fmtTime(next.rise)} · Máx: {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
+        <div style={{fontSize:10,fontWeight:600,color:sat.color,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em"}}>PASE EN {m} MINUTOS</div>
+        <div style={{fontSize:9.5,color:"#64748b",marginTop:2,fontFamily:"monospace"}}>{sat.name} · {fmtTime(next.rise)} · Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
       </div>
-      <button onClick={onDismiss} style={{marginLeft:"auto",color:"#475569",fontSize:16,padding:"4px 8px",borderRadius:6,background:"rgba(255,255,255,0.05)"}}>✕</button>
+      <button onClick={onDismiss} style={{marginLeft:"auto",color:"#334155",fontSize:13,padding:"4px 8px",borderRadius:6,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",cursor:"pointer"}}>✕</button>
     </div>
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   COSMIC BACKGROUND
+───────────────────────────────────────────── */
+function CosmicBg({ color }) {
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:0,overflow:"hidden",pointerEvents:"none"}}>
+      {/* base */}
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 130% 90% at 65% 15%, #0D1B2A 0%, #050816 50%, #07111F 100%)"}}/>
+      {/* noise */}
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0.032}}>
+        <filter id="fn"><feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+        <rect width="100%" height="100%" filter="url(#fn)"/>
+      </svg>
+      {/* aurora */}
+      <div style={{position:"absolute",top:"-25%",left:"25%",width:"85vw",height:"75vh",borderRadius:"50%",background:`radial-gradient(ellipse, ${color}0A 0%, transparent 68%)`,transition:"background 2.5s ease",animation:"auroraF 20s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",bottom:"-15%",right:"-5%",width:"55vw",height:"45vh",borderRadius:"50%",background:"radial-gradient(ellipse, #C47B480A 0%, transparent 68%)",animation:"auroraF 28s ease-in-out infinite reverse"}}/>
+      {/* stars */}
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
+        {Array.from({length:52},(_,i)=>({
+          x:((i*179.3)%100).toFixed(1),y:((i*97.1)%100).toFixed(1),
+          r:i%8===0?1.3:i%4===0?0.7:0.38,
+          op:(0.05+(i%5)*0.05).toFixed(2),dur:3+(i%7),del:(i%9)*0.6,
+        })).map((s,i)=>(
+          <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.r} fill="white" opacity={s.op}>
+            <animate attributeName="opacity" values={`${s.op};${(s.op*0.08).toFixed(2)};${s.op}`} dur={`${s.dur}s`} begin={`${s.del}s`} repeatCount="indefinite"/>
+          </circle>
+        ))}
+      </svg>
+      {/* grid */}
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0.022}}>
+        <defs><pattern id="pg" x="0" y="0" width="90" height="90" patternUnits="userSpaceOnUse"><path d="M 90 0 L 0 0 0 90" fill="none" stroke="#57C7FF" strokeWidth="0.5"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#pg)"/>
+      </svg>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   MAIN APP
+───────────────────────────────────────────── */
 export default function App() {
-  const[sat,setSat]         = useState(SATELLITES[0]);
-  const[passes,setPasses]   = useState([]);
-  const[pos,setPos]         = useState(null);
-  const[news,setNews]       = useState([]);
-  const[newsLoading,setNewsLoading] = useState(false);
-  const[loading,setLoading] = useState(false);
-  const[error,setError]     = useState(null);
-  const[now,setNow]         = useState(new Date());
-  const[mapTab,setMapTab]   = useState("globe");
-  const[onlyVis,setOnlyVis] = useState(false);
-  const[notifDismissed,setNotifDismissed] = useState(false);
-  const[logoError,setLogoError] = useState(false);
-  const[activeSection,setActiveSection] = useState("passes"); // passes | news
+  const [sat, setSat]                   = useState(SATS[0]);
+  const [passes, setPasses]             = useState([]);
+  const [pos, setPos]                   = useState(null);
+  const [news, setNews]                 = useState([]);
+  const [newsLoading, setNewsLoading]   = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState(null);
+  const [now, setNow]                   = useState(new Date());
+  const [mapTab, setMapTab]             = useState("globe");
+  const [onlyVis, setOnlyVis]           = useState(false);
+  const [notifDismissed, setNotifDismissed] = useState(false);
+  const [logoError, setLogoError]       = useState(false);
+  const [section, setSection]           = useState("passes");
 
-  // Reloj
-  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
-
-  // Pases
-  useEffect(()=>{
-    setLoading(true);setError(null);setPasses([]);setNotifDismissed(false);
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    setLoading(true); setError(null); setPasses([]); setNotifDismissed(false);
     fetch(`${API}/passes/${sat.id}`)
-      .then(r=>r.json()).then(data=>{setPasses(data.passes||[]);setLoading(false);})
-      .catch(()=>{setError("No se pudo conectar al servidor.");setLoading(false);});
-  },[sat]);
-
-  // Posición cada 5s
-  useEffect(()=>{
+      .then(r => r.json()).then(d => { setPasses(d.passes || []); setLoading(false); })
+      .catch(() => { setError("No se pudo conectar al servidor."); setLoading(false); });
+  }, [sat]);
+  useEffect(() => {
     setPos(null);
-    const fetchPos=()=>fetch(`${API}/position/${sat.id}`).then(r=>r.json()).then(setPos).catch(()=>{});
-    fetchPos();
-    const t=setInterval(fetchPos,5000);
-    return()=>clearInterval(t);
-  },[sat]);
-
-  // Noticias (una vez)
-  useEffect(()=>{
+    const go = () => fetch(`${API}/position/${sat.id}`).then(r => r.json()).then(setPos).catch(() => {});
+    go(); const t = setInterval(go, 5000); return () => clearInterval(t);
+  }, [sat]);
+  useEffect(() => {
     setNewsLoading(true);
-    fetch(`${API}/news`)
-      .then(r=>r.json()).then(data=>{setNews(data.articles||[]);setNewsLoading(false);})
-      .catch(()=>setNewsLoading(false));
-  },[]);
+    fetch(`${API}/news`).then(r => r.json()).then(d => { setNews(d.articles || []); setNewsLoading(false); }).catch(() => setNewsLoading(false));
+  }, []);
 
-  const future=passes.filter(p=>new Date(p.set)>now);
-  const next=future[0];
-  const shown=onlyVis?future.filter(p=>p.visible):future;
-  const notifNext=future.find(p=>new Date(p.rise)>now&&(new Date(p.rise)-now)<30*60000);
+  const future    = passes.filter(p => new Date(p.set) > now);
+  const next      = future[0];
+  const shown     = onlyVis ? future.filter(p => p.visible) : future;
+  const notifNext = future.find(p => { const d = new Date(p.rise) - now; return d > 0 && d < 30*60000; });
+  const isLive    = pos?.visible_from_santiago;
 
-  return(
+  return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#060d18;color:white;font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden;}
-        ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:#1a3a5c;border-radius:2px;}
+        html{scroll-behavior:smooth;}
+        body{background:#050816;color:#E0E8F0;font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden;}
+        ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#0C2040;border-radius:2px;}
         button{cursor:pointer;border:none;background:none;font-family:inherit;}
         a{color:inherit;}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-        @media(max-width:900px){
+        @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.15;transform:scale(1.5)}}
+        @keyframes auroraF{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(2.5%,1.5%) scale(1.05)}66%{transform:translate(-1.5%,3.5%) scale(0.96)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes orbSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        .sat-btn{transition:all 0.25s;}
+        .sat-btn:hover{transform:translateY(-1px);}
+        .pass-card:hover{border-color:rgba(255,255,255,0.1)!important;}
+        @media(max-width:880px){
           .main-grid{grid-template-columns:1fr!important;}
           .news-grid{grid-template-columns:1fr!important;}
+          .hero-grid{grid-template-columns:1fr!important;}
+          .hero-visual{display:none!important;}
         }
       `}</style>
 
-      <Stars/>
-      {!notifDismissed&&<NotifBanner next={notifNext} sat={sat} onDismiss={()=>setNotifDismissed(true)}/>}
+      <CosmicBg color={sat.color} />
+      {!notifDismissed && <NotifBanner next={notifNext} sat={sat} onDismiss={() => setNotifDismissed(true)} />}
 
-      <div style={{position:"relative",zIndex:1,padding:"0 20px"}}>
-        <div style={{maxWidth:1120,margin:"0 auto"}}>
+      <div style={{position:"relative",zIndex:1,padding:"0 22px"}}>
+        <div style={{maxWidth:1150,margin:"0 auto"}}>
 
-          {/* NAV */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+          {/* ── NAV ── */}
+          <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 0 16px",borderBottom:"1px solid rgba(255,255,255,0.045)",animation:"fadeIn 0.6s ease both"}}>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
-              {!logoError?(
-                <img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:56,width:"auto",objectFit:"contain",filter:"drop-shadow(0 0 10px rgba(56,189,248,0.25))"}}/>
-              ):(
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${sat.color}33,${sat.color}0d)`,border:`1px solid ${sat.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🛰</div>
-                  <div style={{fontFamily:"'Space Mono'",fontSize:15,fontWeight:700,letterSpacing:"0.12em",color:sat.color}}>AUSTRAL ORBIT</div>
+              {!logoError
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:50,width:"auto",objectFit:"contain",filter:`drop-shadow(0 0 14px ${sat.color}30)`,transition:"filter 0.6s"}}/>
+                :<div style={{display:"flex",alignItems:"center",gap:11}}>
+                  <div style={{width:36,height:36,borderRadius:9,background:`${sat.color}18`,border:`1px solid ${sat.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>🛰</div>
+                  <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13.5,fontWeight:500,letterSpacing:"0.14em",color:sat.color,transition:"color 0.6s"}}>AUSTRAL ORBIT</span>
                 </div>
-              )}
-              <div style={{fontSize:10,color:"#334155",letterSpacing:"0.2em",textTransform:"uppercase",display:logoError?"none":"block"}}>Santiago · 33.4°S · 70.6°O</div>
+              }
+              <div style={{height:18,width:1,background:"rgba(255,255,255,0.07)"}}/>
+              <span style={{fontSize:9.5,color:"#1E3A50",letterSpacing:"0.2em",textTransform:"uppercase",fontFamily:"'IBM Plex Mono',monospace"}}>Santiago · 33.4°S</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               {pos&&(
-                <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:7,background:pos.visible_from_santiago?sat.color+"18":"rgba(255,255,255,0.03)",border:`1px solid ${pos.visible_from_santiago?sat.color+"55":"rgba(255,255,255,0.07)"}`}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:pos.visible_from_santiago?sat.color:"#334155",animation:pos.visible_from_santiago?"pulse 1.5s infinite":"none"}}/>
-                  <span style={{fontSize:9,fontFamily:"monospace",color:pos.visible_from_santiago?sat.color:"#475569",letterSpacing:"0.1em"}}>{pos.visible_from_santiago?"VISIBLE":"NO VISIBLE"}</span>
+                <div style={{display:"flex",alignItems:"center",gap:7,padding:"5px 11px",borderRadius:8,background:isLive?sat.color+"14":"rgba(255,255,255,0.025)",border:`1px solid ${isLive?sat.color+"40":"rgba(255,255,255,0.055)"}`,transition:"all 0.6s"}}>
+                  <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:isLive?sat.color:"#1E3A50",animation:isLive?"livePulse 2s infinite":"none"}}/>
+                  <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:isLive?sat.color:"#334155",letterSpacing:"0.1em"}}>{isLive?"VISIBLE":"NO VISIBLE"}</span>
                 </div>
               )}
               <div style={{textAlign:"right"}}>
-                <div style={{fontFamily:"'Space Mono'",fontSize:20,color:"white",letterSpacing:"0.08em"}}>{`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`}</div>
-                <div style={{fontSize:9,color:"#334155",letterSpacing:"0.2em",marginTop:1}}>HORA CHILE</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:21,color:"#F0F4F8",letterSpacing:"0.04em"}}>{`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`}</div>
+                <div style={{fontSize:7.5,color:"#1E3A50",letterSpacing:"0.2em",marginTop:1,fontFamily:"'IBM Plex Mono',monospace"}}>HORA CHILE</div>
+              </div>
+            </div>
+          </nav>
+
+          {/* ── HERO ── */}
+          <div className="hero-grid" style={{display:"grid",gridTemplateColumns:"1fr 420px",gap:52,padding:"60px 0 48px",alignItems:"center"}}>
+            <div style={{animation:"fadeUp 0.9s ease both"}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"5px 13px",borderRadius:20,background:sat.color+"10",border:`1px solid ${sat.color}28`,marginBottom:26,transition:"all 0.6s"}}>
+                <span style={{display:"block",width:4,height:4,borderRadius:"50%",background:sat.color,animation:"livePulse 2.2s infinite"}}/>
+                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:sat.color,letterSpacing:"0.2em",textTransform:"uppercase",transition:"color 0.6s"}}>Datos reales · Skyfield + CelesTrak</span>
+              </div>
+              <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(34px,4.8vw,62px)",fontWeight:800,lineHeight:1.06,letterSpacing:"-0.03em",marginBottom:18,color:"#F5F7FA"}}>
+                El espacio está<br/>
+                <span style={{color:sat.color,transition:"color 0.6s"}}>sobre Latinoamérica</span><br/>
+                ahora mismo.
+              </h1>
+              <p style={{fontSize:16,color:"#334155",lineHeight:1.78,fontWeight:300,maxWidth:430,marginBottom:38}}>
+                Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
+              </p>
+              {next && (
+                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:14,overflow:"hidden",border:`1px solid ${sat.color}22`,backdropFilter:"blur(12px)",background:"rgba(3,8,20,0.5)"}}>
+                  <div style={{padding:"16px 22px",borderRight:"1px solid rgba(255,255,255,0.055)"}}>
+                    <div style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"#1E3A50",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:31,fontWeight:600,color:sat.color,transition:"color 0.6s",letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
+                    <div style={{fontSize:9.5,color:"#1E3A50",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · Chile</div>
+                  </div>
+                  <div style={{padding:"16px 22px"}}>
+                    <div style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"#1E3A50",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:31,fontWeight:600,color:"#F0F4F8",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
+                    <div style={{fontSize:9.5,color:"#1E3A50",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* hero visual */}
+            <div className="hero-visual" style={{display:"flex",justifyContent:"center",animation:"fadeUp 1.1s ease 0.15s both"}}>
+              <div style={{position:"relative"}}>
+                <div style={{position:"absolute",inset:-40,borderRadius:"50%",background:`radial-gradient(circle, ${sat.color}0E 0%, transparent 72%)`,transition:"background 0.7s",animation:"auroraF 14s ease-in-out infinite"}}/>
+                <OrbitalPlanet sat={sat} pos={pos}/>
               </div>
             </div>
           </div>
 
-          {/* HERO */}
-          <div style={{padding:"40px 0 30px",textAlign:"center"}}>
-            <div style={{fontSize:10,fontFamily:"'Space Mono'",letterSpacing:"0.3em",color:sat.color,marginBottom:14,transition:"color 0.4s"}}>● DATOS REALES · Skyfield + CelesTrak</div>
-            <h1 style={{fontSize:"clamp(28px,5vw,56px)",fontWeight:800,lineHeight:1.1,marginBottom:18,letterSpacing:"-0.02em"}}>
-              Satélites cruzando<br/><span style={{color:sat.color,transition:"color 0.4s"}}>tu cielo</span> esta noche
-            </h1>
-            <p style={{fontSize:15,color:"#64748b",maxWidth:460,margin:"0 auto",lineHeight:1.7,fontWeight:300}}>Pases calculados en tiempo real sobre Santiago de Chile.</p>
-            {next&&(
-              <div style={{display:"inline-flex",alignItems:"center",gap:18,marginTop:26,padding:"14px 24px",borderRadius:14,background:"rgba(255,255,255,0.03)",border:`1px solid ${sat.color}33`,flexWrap:"wrap",justifyContent:"center"}}>
-                <div style={{textAlign:"left"}}>
-                  <div style={{fontSize:9,fontFamily:"'Space Mono'",letterSpacing:"0.2em",color:"#475569",textTransform:"uppercase"}}>Próximo · {sat.name}</div>
-                  <div style={{fontSize:26,fontFamily:"'Space Mono'",fontWeight:700,color:sat.color,marginTop:3,transition:"color 0.4s"}}>{fmtTime(next.rise)}</div>
-                  <div style={{fontSize:11,color:"#475569",marginTop:1}}>{fmtDate(next.rise)} · hora Chile</div>
-                </div>
-                <div style={{width:1,height:42,background:"rgba(255,255,255,0.08)"}}/>
-                <div style={{textAlign:"left"}}>
-                  <div style={{fontSize:9,fontFamily:"'Space Mono'",letterSpacing:"0.2em",color:"#475569",textTransform:"uppercase"}}>Faltan</div>
-                  <div style={{fontSize:26,fontFamily:"'Space Mono'",fontWeight:700,color:"white",marginTop:3}}>{timeUntil(next.rise)}</div>
-                  <div style={{fontSize:11,color:"#475569",marginTop:1}}>Máx: {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
-                </div>
-              </div>
-            )}
-          </div>
+          <div style={{height:1,background:`linear-gradient(90deg, transparent, ${sat.color}40, transparent)`,transition:"background 0.6s"}}/>
 
-          <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(56,189,248,0.3),transparent)"}}/>
-
-          {/* SAT PICKER */}
-          <div style={{padding:"18px 0 14px"}}>
-            <div style={{fontSize:9,fontFamily:"'Space Mono'",letterSpacing:"0.2em",color:"#334155",textTransform:"uppercase",marginBottom:10}}>Selecciona satélite</div>
-            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-              {SATELLITES.map(s=>(
-                <button key={s.id} onClick={()=>setSat(s)} style={{flexShrink:0,padding:"9px 14px",borderRadius:9,background:sat.id===s.id?s.color+"18":"rgba(255,255,255,0.03)",border:`1px solid ${sat.id===s.id?s.color+"66":"rgba(255,255,255,0.07)"}`,color:sat.id===s.id?s.color:"#64748b",fontFamily:"'Space Mono'",fontSize:11,letterSpacing:"0.06em",transition:"all 0.25s",display:"flex",alignItems:"center",gap:7,boxShadow:sat.id===s.id?`0 0 18px ${s.color}22`:"none"}}>
-                  <span style={{width:6,height:6,borderRadius:"50%",background:sat.id===s.id?s.color:"#334155",flexShrink:0}}/>
+          {/* ── SAT PICKER ── */}
+          <div style={{padding:"20px 0 16px"}}>
+            <div style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.24em",color:"#1E3A50",textTransform:"uppercase",marginBottom:12}}>Selecciona satélite</div>
+            <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:4}}>
+              {SATS.map(s=>(
+                <button key={s.id} className="sat-btn" onClick={()=>setSat(s)} style={{flexShrink:0,padding:"9px 15px",borderRadius:10,background:sat.id===s.id?s.color+"12":"rgba(255,255,255,0.022)",border:`1px solid ${sat.id===s.id?s.color+"48":"rgba(255,255,255,0.055)"}`,color:sat.id===s.id?s.color:"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:"0.06em",boxShadow:sat.id===s.id?`0 0 22px ${s.color}14`:"none",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:sat.id===s.id?s.color:"#1E3A50",boxShadow:sat.id===s.id?`0 0 8px ${s.color}`:"none",flexShrink:0}}/>
                   {s.name}
-                  {s.chilean&&<span style={{fontSize:8,background:"#f43f5e15",color:"#f87171",padding:"1px 5px",borderRadius:3,border:"1px solid #f43f5e30"}}>🇨🇱</span>}
+                  {s.chilean&&<span style={{fontSize:7,background:"#C47B4810",color:"#C47B48",padding:"2px 5px",borderRadius:3,border:"1px solid #C47B4826",letterSpacing:"0.08em"}}>🇨🇱 CL</span>}
                 </button>
               ))}
             </div>
           </div>
 
-          <div style={{height:1,background:"rgba(255,255,255,0.05)"}}/>
+          <div style={{height:1,background:"rgba(255,255,255,0.04)"}}/>
 
-          {/* MAIN GRID */}
-          <div className="main-grid" style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:24,padding:"22px 0",alignItems:"start"}}>
+          {/* ── MAIN GRID ── */}
+          <div className="main-grid" style={{display:"grid",gridTemplateColumns:"292px 1fr",gap:26,padding:"24px 0",alignItems:"start"}}>
 
-            {/* LEFT */}
-            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              <div style={{display:"flex",gap:6}}>
+            {/* ── LEFT ── */}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* map tabs */}
+              <div style={{display:"flex",gap:5}}>
                 {[["globe","🌍 Globo"],["chile","🇨🇱 Chile"]].map(([id,label])=>(
-                  <button key={id} onClick={()=>setMapTab(id)} style={{flex:1,padding:"8px",borderRadius:8,background:mapTab===id?sat.color+"18":"rgba(255,255,255,0.03)",border:`1px solid ${mapTab===id?sat.color+"55":"rgba(255,255,255,0.07)"}`,color:mapTab===id?sat.color:"#64748b",fontFamily:"'Space Mono'",fontSize:10,letterSpacing:"0.08em",transition:"all 0.2s"}}>
+                  <button key={id} onClick={()=>setMapTab(id)} style={{flex:1,padding:"8px",borderRadius:8,background:mapTab===id?sat.color+"12":"rgba(255,255,255,0.022)",border:`1px solid ${mapTab===id?sat.color+"40":"rgba(255,255,255,0.055)"}`,color:mapTab===id?sat.color:"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,letterSpacing:"0.08em",transition:"all 0.2s",backdropFilter:"blur(8px)"}}>
                     {label}
                   </button>
                 ))}
               </div>
-              <div style={{borderRadius:14,border:`1px solid ${sat.color}22`,background:"rgba(255,255,255,0.01)",padding:12,display:"flex",justifyContent:"center",transition:"border-color 0.4s",position:"relative"}}>
-                {!pos&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:14,background:"rgba(6,13,24,0.8)",zIndex:2}}><div style={{fontFamily:"monospace",fontSize:10,color:sat.color,letterSpacing:"0.1em"}}>Cargando posición...</div></div>}
+
+              {/* map */}
+              <div style={{borderRadius:15,border:`1px solid ${sat.color}16`,background:"rgba(3,8,20,0.45)",padding:10,display:"flex",justifyContent:"center",position:"relative",backdropFilter:"blur(10px)",transition:"border-color 0.6s",minHeight:200}}>
+                {!pos&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:15,background:"rgba(3,8,20,0.88)",zIndex:2}}><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:sat.color,letterSpacing:"0.14em"}}>Cargando...</span></div>}
                 {mapTab==="globe"?<Globe sat={sat} pos={pos}/>:<ChileMap sat={sat} pos={pos}/>}
               </div>
+
               <LivePanel pos={pos} sat={sat}/>
-              <div style={{borderRadius:12,padding:16,background:`linear-gradient(135deg,${sat.color}0d,rgba(255,255,255,0.02))`,border:`1px solid ${sat.color}28`,transition:"all 0.4s"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:28}}>{sat.image}</span>
+
+              {/* sat info */}
+              <div style={{borderRadius:14,padding:"16px 18px",background:`linear-gradient(148deg,${sat.color}08,rgba(3,8,20,0.5))`,border:`1px solid ${sat.color}18`,backdropFilter:"blur(10px)",transition:"all 0.6s"}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:13}}>
+                  <span style={{fontSize:30,lineHeight:1}}>{sat.icon}</span>
                   <div style={{flex:1}}>
-                    <div style={{fontFamily:"'Space Mono'",fontSize:14,fontWeight:700,color:sat.color,letterSpacing:"0.08em",transition:"color 0.4s"}}>{sat.name}</div>
-                    {sat.flag&&<div style={{fontSize:16,marginTop:2}}>{sat.flag}</div>}
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:14.5,fontWeight:500,color:sat.color,letterSpacing:"0.04em",transition:"color 0.6s"}}>{sat.name}</div>
+                    <div style={{fontSize:11,color:"#334155",marginTop:3,lineHeight:1.4}}>{sat.full}</div>
                   </div>
+                  {sat.flag&&<span style={{fontSize:17}}>{sat.flag}</span>}
                 </div>
-                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,fontWeight:300,marginBottom:10}}>{sat.desc}</div>
+                <p style={{fontSize:11.5,color:"#64748b",lineHeight:1.72,fontWeight:300,marginBottom:13}}>{sat.desc}</p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
                   {[["Órbita",sat.orbit],["Velocidad",sat.speed]].map(([l,v])=>(
-                    <div key={l} style={{padding:"7px 10px",borderRadius:8,background:"rgba(0,0,0,0.3)",textAlign:"center"}}>
-                      <div style={{fontSize:8,fontFamily:"monospace",color:"#334155",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{l}</div>
-                      <div style={{fontSize:11,fontFamily:"monospace",color:"white",fontWeight:700}}>{v}</div>
+                    <div key={l} style={{padding:"9px 11px",borderRadius:9,background:"rgba(3,8,20,0.55)",textAlign:"center",border:"1px solid rgba(255,255,255,0.038)"}}>
+                      <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"#1E3A50",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
+                      <div style={{fontSize:12,fontFamily:"'IBM Plex Mono',monospace",color:"#E0E8F0",fontWeight:500}}>{v}</div>
                     </div>
                   ))}
                 </div>
-                {sat.chilean&&<div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#f43f5e0d",border:"1px solid #f43f5e22",fontSize:11,color:"#f87171"}}>🇨🇱 Satélite de fabricación chilena</div>}
+                {sat.chilean&&<div style={{marginTop:11,padding:"8px 12px",borderRadius:8,background:"#C47B480A",border:"1px solid #C47B4818",fontSize:10.5,color:"#C47B48",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>🇨🇱 Satélite de fabricación chilena</div>}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+
+              {/* stat pills */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
                 {[[future.length,"Pases",sat.color],[future.filter(p=>p.visible).length,"Visibles","#4ade80"]].map(([v,l,c])=>(
-                  <div key={l} style={{borderRadius:10,padding:"12px 14px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                    <div style={{fontSize:8,fontFamily:"monospace",color:"#334155",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:5}}>{l}</div>
-                    <div style={{fontSize:28,fontFamily:"monospace",fontWeight:700,color:c,transition:"color 0.4s"}}>{v}</div>
+                  <div key={l} style={{borderRadius:12,padding:"13px 15px",background:"rgba(255,255,255,0.018)",border:"1px solid rgba(255,255,255,0.048)",backdropFilter:"blur(8px)"}}>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"#1E3A50",letterSpacing:"0.16em",textTransform:"uppercase",marginBottom:5}}>{l}</div>
+                    <div style={{fontSize:29,fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,color:c,transition:"color 0.6s"}}>{v}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* RIGHT */}
-            <div style={{display:"flex",flexDirection:"column",gap:0}}>
-              {/* Section tabs */}
-              <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
-                {[["passes","🛰 Pases"],["news","📰 Noticias espaciales"]].map(([id,label])=>(
-                  <button key={id} onClick={()=>setActiveSection(id)} style={{padding:"10px 20px",fontFamily:"'Space Mono'",fontSize:11,letterSpacing:"0.08em",color:activeSection===id?"white":"#475569",borderBottom:activeSection===id?`2px solid ${sat.color}`:"2px solid transparent",transition:"all 0.2s",background:"none",marginBottom:-1}}>
+            {/* ── RIGHT ── */}
+            <div style={{display:"flex",flexDirection:"column"}}>
+              {/* section tabs */}
+              <div style={{display:"flex",marginBottom:20,borderBottom:"1px solid rgba(255,255,255,0.055)"}}>
+                {[["passes","Pases"],["news","Noticias espaciales"]].map(([id,label])=>(
+                  <button key={id} onClick={()=>setSection(id)} style={{padding:"10px 22px",fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:"0.1em",color:section===id?"#F0F4F8":"#1E3A50",borderBottom:section===id?`2px solid ${sat.color}`:"2px solid transparent",transition:"all 0.25s",background:"none",marginBottom:-1}}>
                     {label}
                   </button>
                 ))}
               </div>
 
               {/* PASSES */}
-              {activeSection==="passes"&&<>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
+              {section==="passes"&&<>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:12}}>
                   <div>
-                    <div style={{fontSize:17,fontWeight:700}}>Pases de <span style={{color:sat.color,transition:"color 0.4s"}}>{sat.name}</span></div>
-                    <div style={{fontSize:11,color:"#475569",marginTop:2}}>Santiago · próximos 3 días · elevación mín. 10°</div>
+                    <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Pases de <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span></h2>
+                    <div style={{fontSize:10.5,color:"#1E3A50",marginTop:3,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
                   </div>
-                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                    <div style={{textAlign:"center"}}><div style={{fontSize:22,fontFamily:"monospace",fontWeight:700,color:sat.color}}>{future.length}</div><div style={{fontSize:8,color:"#334155",fontFamily:"monospace",letterSpacing:"0.1em"}}>PASES</div></div>
-                    <div style={{textAlign:"center"}}><div style={{fontSize:22,fontFamily:"monospace",fontWeight:700,color:"#4ade80"}}>{future.filter(p=>p.visible).length}</div><div style={{fontSize:8,color:"#334155",fontFamily:"monospace",letterSpacing:"0.1em"}}>VISIBLES</div></div>
-                    <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"7px 12px",borderRadius:8,background:onlyVis?"#22c55e15":"rgba(255,255,255,0.04)",border:`1px solid ${onlyVis?"#22c55e44":"rgba(255,255,255,0.1)"}`,color:onlyVis?"#4ade80":"#64748b",fontFamily:"'Space Mono'",fontSize:9,letterSpacing:"0.08em",transition:"all 0.2s"}}>
-                      {onlyVis?"👁 VISIBLES":"TODOS"}
+                  <div style={{display:"flex",gap:13,alignItems:"center"}}>
+                    <div style={{textAlign:"center"}}><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:25,fontWeight:600,color:sat.color,transition:"color 0.6s"}}>{future.length}</div><div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em"}}>PASES</div></div>
+                    <div style={{textAlign:"center"}}><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:25,fontWeight:600,color:"#4ade80"}}>{future.filter(p=>p.visible).length}</div><div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.14em"}}>VISIBLES</div></div>
+                    <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"7px 14px",borderRadius:9,background:onlyVis?"#22c55e10":"rgba(255,255,255,0.025)",border:`1px solid ${onlyVis?"#22c55e2E":"rgba(255,255,255,0.075)"}`,color:onlyVis?"#4ade80":"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}>
+                      {onlyVis?"● VISIBLES":"TODOS"}
                     </button>
                   </div>
                 </div>
-                {loading&&<div style={{padding:48,textAlign:"center"}}><div style={{fontSize:32,marginBottom:12}}>⏳</div><div style={{fontFamily:"monospace",fontSize:11,color:sat.color,letterSpacing:"0.1em"}}>Calculando pases reales...</div></div>}
-                {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed #f43f5e44",borderRadius:12,background:"#f43f5e08"}}><div style={{fontSize:28,marginBottom:10}}>⚠️</div><div style={{fontFamily:"monospace",fontSize:11,color:"#f87171"}}>{error}</div></div>}
+                {loading&&<div style={{padding:56,textAlign:"center"}}><div style={{fontSize:26,marginBottom:14,display:"inline-block",animation:"orbSpin 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.16em"}}>Calculando pases reales...</div></div>}
+                {error&&<div style={{padding:36,textAlign:"center",border:"1px dashed #f43f5e2E",borderRadius:14,background:"#f43f5e06"}}><div style={{fontSize:24,marginBottom:12}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
                 {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
-                {!loading&&!error&&shown.length===0&&<div style={{padding:44,textAlign:"center",border:"1px dashed rgba(255,255,255,0.07)",borderRadius:12}}><div style={{fontSize:32,marginBottom:10}}>🌑</div><div style={{fontFamily:"monospace",fontSize:11,color:"#334155"}}>Sin pases en los próximos 3 días</div></div>}
+                {!loading&&!error&&shown.length===0&&<div style={{padding:52,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:26,marginBottom:12}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
               </>}
 
               {/* NEWS */}
-              {activeSection==="news"&&<>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
+              {section==="news"&&<>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:12}}>
                   <div>
-                    <div style={{fontSize:17,fontWeight:700}}>Noticias <span style={{color:"#38bdf8"}}>espaciales</span></div>
-                    <div style={{fontSize:11,color:"#475569",marginTop:2}}>Actualizadas diariamente · traducidas al español</div>
+                    <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Noticias <span style={{color:"#57C7FF"}}>espaciales</span></h2>
+                    <div style={{fontSize:10.5,color:"#1E3A50",marginTop:3,fontFamily:"'IBM Plex Mono',monospace"}}>Actualizadas diariamente · traducidas al español</div>
                   </div>
-                  <div style={{fontSize:9,color:"#334155",fontFamily:"monospace",letterSpacing:"0.1em"}}>Fuente: Spaceflight News API</div>
+                  <div style={{fontSize:8.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>Spaceflight News API</div>
                 </div>
-                {newsLoading&&<div style={{padding:48,textAlign:"center"}}><div style={{fontSize:32,marginBottom:12}}>📡</div><div style={{fontFamily:"monospace",fontSize:11,color:"#38bdf8",letterSpacing:"0.1em"}}>Cargando noticias...</div></div>}
-                {!newsLoading&&(
-                  <div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
-                    {news.map((article,i)=><NewsCard key={i} article={article}/>)}
-                  </div>
-                )}
-                {!newsLoading&&news.length===0&&<div style={{padding:44,textAlign:"center",border:"1px dashed rgba(255,255,255,0.07)",borderRadius:12}}><div style={{fontSize:32,marginBottom:10}}>📭</div><div style={{fontFamily:"monospace",fontSize:11,color:"#334155"}}>No se pudieron cargar las noticias</div></div>}
+                {newsLoading&&<div style={{padding:56,textAlign:"center"}}><div style={{fontSize:24,marginBottom:14}}>📡</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#57C7FF",letterSpacing:"0.14em"}}>Cargando noticias...</div></div>}
+                {!newsLoading&&<div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:14}}>{news.map((a,i)=><NewsCard key={i} article={a}/>)}</div>}
+                {!newsLoading&&news.length===0&&<div style={{padding:52,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}><div style={{fontSize:26,marginBottom:12}}>📭</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"#1E3A50"}}>No se pudieron cargar las noticias</div></div>}
               </>}
             </div>
           </div>
 
-          {/* FOOTER */}
-          <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(56,189,248,0.2),transparent)"}}/>
-          <div style={{padding:"16px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+          {/* ── FOOTER ── */}
+          <div style={{height:1,background:`linear-gradient(90deg,transparent,${sat.color}30,transparent)`,transition:"background 0.6s"}}/>
+          <div style={{padding:"16px 0 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:24,width:"auto",objectFit:"contain",mixBlendMode:"screen",opacity:0.5,filter:"brightness(1.2)"}}/>
-                :<div style={{fontFamily:"'Space Mono'",fontSize:9,color:"#1a3050",letterSpacing:"0.15em"}}>AUSTRAL ORBIT</div>
+                ?<img src="/logo.png" onError={()=>setLogoError(true)} alt="Austral Orbit" style={{height:20,width:"auto",objectFit:"contain",opacity:0.3,filter:"brightness(1.4)"}}/>
+                :<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"#0C2040",letterSpacing:"0.18em"}}>AUSTRAL ORBIT</span>
               }
-              <div style={{fontSize:8,color:"#1a3050",fontFamily:"monospace",letterSpacing:"0.1em"}}>Owner: Joaquín Valdebenito Palma</div>
+              <div style={{fontSize:7.5,color:"#0C2040",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>Owner: Joaquín Valdebenito Palma</div>
             </div>
-            <div style={{fontSize:9,color:"#1a3050",fontFamily:"monospace",textAlign:"right"}}>Powered by Skyfield · CelesTrak · Spaceflight News API</div>
+            <div style={{fontSize:8.5,color:"#0C2040",fontFamily:"'IBM Plex Mono',monospace",textAlign:"right",letterSpacing:"0.08em"}}>Powered by Skyfield · CelesTrak · Spaceflight News API</div>
           </div>
         </div>
       </div>
