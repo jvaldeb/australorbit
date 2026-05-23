@@ -612,14 +612,18 @@ export default function App() {
 
           {/* ── NAV ── */}
           <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 0 16px",borderBottom:"1px solid rgba(255,255,255,0.045)",animation:"fadeIn 0.6s ease both"}}>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:16}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:56,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 14px rgba(10,28,80,0.55)) brightness(1.08)",transition:"filter 0.6s"}}/>
-                :<div style={{display:"flex",alignItems:"center",gap:11}}>
-                  <div style={{width:36,height:36,borderRadius:9,background:`${sat.color}18`,border:`1px solid ${sat.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>🛰</div>
-                  <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13.5,fontWeight:500,letterSpacing:"0.14em",color:sat.color,transition:"color 0.6s"}}>AUSTRAL ORBIT</span>
-                </div>
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:68,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 14px rgba(10,28,80,0.55)) brightness(1.08)",transition:"filter 0.6s"}}/>
+                :<div style={{width:44,height:44,borderRadius:10,background:`${sat.color}18`,border:`1px solid ${sat.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🛰</div>
               }
+              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:7}}>
+                  <span style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:800,letterSpacing:"0.04em",color:"#F5F7FA"}}>AUSTRAL</span>
+                  <span style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:400,letterSpacing:"0.18em",color:sat.color,transition:"color 0.6s"}}>ORBIT</span>
+                </div>
+                <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7.5,letterSpacing:"0.28em",color:"#1E3A50",textTransform:"uppercase"}}>Santiago · 33.4°S · Chile</span>
+              </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               {pos&&(
