@@ -19,13 +19,13 @@ app.add_middleware(
 SANTIAGO = wgs84.latlon(-33.4489, -70.6693, elevation_m=570)
 
 SATELLITE_URLS = {
-    "ISS":      "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle",
-    "HST":      "https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=tle",
-    "TIANGONG": "https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=tle",
-    "SUCHAI":   "https://celestrak.org/NORAD/elements/gp.php?CATNR=42788&FORMAT=tle",
-    "SSOT":     "https://celestrak.org/NORAD/elements/gp.php?CATNR=38011&FORMAT=tle",
-    "SUCHAI2":  "https://celestrak.org/NORAD/elements/gp.php?CATNR=57757&FORMAT=tle",
-    "SUCHAI3":  "https://celestrak.org/NORAD/elements/gp.php?CATNR=57758&FORMAT=tle",
+    "ISS":     "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle",
+    "HST":     "https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=tle",
+    "TIANGONG":"https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=tle",
+    "SSOT":    "https://celestrak.org/NORAD/elements/gp.php?CATNR=38011&FORMAT=tle",
+    "LEMU":    "https://celestrak.org/NORAD/elements/gp.php?CATNR=60532&FORMAT=tle",
+    "SUCHAI2": "https://celestrak.org/NORAD/elements/gp.php?CATNR=57757&FORMAT=tle",
+    "SUCHAI3": "https://celestrak.org/NORAD/elements/gp.php?CATNR=57758&FORMAT=tle",
 }
 
 ts = load.timescale()
@@ -33,7 +33,6 @@ _tle_cache = {}
 _news_cache = {"date": None, "articles": []}
 NEWS_CACHE_FILE = "news_cache.json"
 
-# ── TLE cache ────────────────────────────────────────────────────────────────
 def get_satellite(sat_id):
     if sat_id in _tle_cache:
         return _tle_cache[sat_id]
@@ -43,7 +42,6 @@ def get_satellite(sat_id):
     _tle_cache[sat_id] = sats[0] if sats else None
     return _tle_cache[sat_id]
 
-# ── Passes ───────────────────────────────────────────────────────────────────
 def get_passes(sat_id: str, days: int = 3):
     if sat_id not in SATELLITE_URLS:
         return {"error": "Satélite no encontrado"}
@@ -67,8 +65,8 @@ def get_passes(sat_id: str, days: int = 3):
             pase["max_el"] = float(round(alt.degrees, 1))
             pase["max_az"] = float(round(az.degrees, 1))
         elif evento == 2:
-            pase["set"]      = dt.isoformat()
-            pase["set_az"]   = float(round(az.degrees, 1))
+            pase["set"]     = dt.isoformat()
+            pase["set_az"]  = float(round(az.degrees, 1))
             rise_dt = datetime.fromisoformat(pase["rise"])
             pase["duration"] = int((dt - rise_dt.replace(tzinfo=timezone.utc)).seconds)
             pase["visible"]  = bool(pase.get("max_el", 0) > 25)
@@ -77,7 +75,6 @@ def get_passes(sat_id: str, days: int = 3):
             pase = {}
     return {"satellite": sat_id, "passes": passes}
 
-# ── Position ─────────────────────────────────────────────────────────────────
 def get_position(sat_id: str):
     if sat_id not in SATELLITE_URLS:
         return {"error": "Satélite no encontrado"}
@@ -101,7 +98,6 @@ def get_position(sat_id: str):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-# ── News ─────────────────────────────────────────────────────────────────────
 def translate(text: str) -> str:
     try:
         if not text or len(text.strip()) < 5:
@@ -130,55 +126,46 @@ async def fetch_and_translate_news():
             timeout=15,
         )
         data = r.json()
-
     articles = []
     for a in data.get("results", []):
         try:
             title_es   = translate(a["title"])
             summary_es = translate(a.get("summary", "")[:400])
             pub = datetime.fromisoformat(a["published_at"].replace("Z", "+00:00"))
-            # Fecha en español
             meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
             fecha = f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}"
             articles.append({
-                "title":        title_es,
-                "title_en":     a["title"],
-                "summary":      summary_es,
-                "url":          a["url"],
-                "image":        a.get("image_url", ""),
-                "source":       a["news_site"],
-                "published":    fecha,
-                "published_raw":a["published_at"],
+                "title":         title_es,
+                "title_en":      a["title"],
+                "summary":       summary_es,
+                "url":           a["url"],
+                "image":         a.get("image_url", ""),
+                "source":        a["news_site"],
+                "published":     fecha,
+                "published_raw": a["published_at"],
             })
         except Exception as e:
-            print(f"[NEWS] Error procesando artículo: {e}")
+            print(f"[NEWS] Error: {e}")
             continue
-
     return articles
 
 async def get_news_cached():
     global _news_cache
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
     if not _news_cache["articles"]:
         _news_cache = load_news_cache()
-
     if _news_cache.get("date") == today and _news_cache.get("articles"):
-        print("[NEWS] Sirviendo desde caché.")
         return _news_cache["articles"]
-
-    print(f"[NEWS] Actualizando noticias para {today}...")
+    print(f"[NEWS] Actualizando para {today}...")
     try:
         articles = await fetch_and_translate_news()
         _news_cache = {"date": today, "articles": articles}
         save_news_cache(_news_cache)
-        print(f"[NEWS] {len(articles)} noticias guardadas.")
         return articles
     except Exception as e:
         print(f"[NEWS] Error: {e}")
         return _news_cache.get("articles", [])
 
-# ── Endpoints ────────────────────────────────────────────────────────────────
 @app.get("/")
 def root():
     return {"status": "AustralOrbit API funcionando 🛰️"}

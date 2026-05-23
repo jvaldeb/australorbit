@@ -4,13 +4,13 @@ const SATELLITES = [
   { id:"ISS",      name:"ISS",           color:"#38bdf8", image:"🏗️", chilean:false, flag:null,  desc:"Estación Espacial Internacional. Hogar permanente de astronautas desde el año 2000.", orbit:"400 km", speed:"27,600 km/h" },
   { id:"HST",      name:"Hubble",        color:"#34d399", image:"🔭", chilean:false, flag:null,  desc:"Más de 30 años fotografiando el universo desde 540 km de altitud.", orbit:"540 km", speed:"27,300 km/h" },
   { id:"TIANGONG", name:"Tiangong",      color:"#fbbf24", image:"🏮", chilean:false, flag:"🇨🇳", desc:"Estación espacial china en expansión activa desde 2021.", orbit:"390 km", speed:"27,700 km/h" },
-  { id:"SSOT",     name:"SSOT",          color:"#f43f5e", image:"📡", chilean:true,  flag:"🇨🇱", desc:"Satélite chileno de observación de la Tierra. Lanzado en 2011, captura imágenes de alta resolución.", orbit:"628 km", speed:"27,200 km/h" },
-  { id:"SUCHAI",   name:"SUCHAI-1",      color:"#a78bfa", image:"🎓", chilean:true,  flag:"🇨🇱", desc:"Primer CubeSat chileno. Construido por estudiantes de la U. de Chile, 2017.", orbit:"510 km", speed:"27,500 km/h" },
-  { id:"SUCHAI2",  name:"SUCHAI-2",      color:"#c084fc", image:"🔬", chilean:true,  flag:"🇨🇱", desc:"Segundo CubeSat de la U. de Chile. Experimentos de plasma ionosférico.", orbit:"550 km", speed:"27,400 km/h" },
-  { id:"SUCHAI3",  name:"SUCHAI-3",      color:"#e879f9", image:"🌿", chilean:true,  flag:"🇨🇱", desc:"Tercer CubeSat chileno. Monitoreo forestal y medioambiental.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"SSOT",     name:"SSOT",          color:"#f43f5e", image:"📡", chilean:true,  flag:"🇨🇱", desc:"Satélite chileno de observación de la Tierra. Lanzado en 2011, captura imágenes de 1.45m de resolución para cartografía y emergencias.", orbit:"628 km", speed:"27,200 km/h" },
+  { id:"LEMU",     name:"LEMU NGE",      color:"#22c55e", image:"🌲", chilean:true,  flag:"🇨🇱", desc:"Primer satélite privado chileno. Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral. Creado por la startup Lemu.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"SUCHAI2",  name:"SUCHAI-2",      color:"#c084fc", image:"🔬", chilean:true,  flag:"🇨🇱", desc:"CubeSat de la U. de Chile. Experimentos de plasma ionosférico en órbita.", orbit:"550 km", speed:"27,400 km/h" },
+  { id:"SUCHAI3",  name:"SUCHAI-3",      color:"#e879f9", image:"🌿", chilean:true,  flag:"🇨🇱", desc:"Tercer CubeSat chileno de la U. de Chile. Monitoreo forestal y medioambiental.", orbit:"550 km", speed:"27,400 km/h" },
 ];
 
-const API = "https://australorbit-production.up.railway.app";
+const API = "http://127.0.0.1:8000";
 const SANTIAGO = { lat:-33.4489, lon:-70.6693 };
 const pad = n => String(n).padStart(2,"0");
 const d2r = d => d * Math.PI / 180;
@@ -584,11 +584,14 @@ export default function App() {
           {/* FOOTER */}
           <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(56,189,248,0.2),transparent)"}}/>
           <div style={{padding:"16px 0",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            {!logoError
-              ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:28,width:"auto",objectFit:"contain",opacity:0.35,filter:"brightness(0) invert(1)"}}/>
-              :<div style={{fontFamily:"'Space Mono'",fontSize:9,color:"#1a3050",letterSpacing:"0.15em"}}>AUSTRAL ORBIT</div>
-            }
-            <div style={{fontSize:9,color:"#1a3050",fontFamily:"monospace"}}>Powered by Skyfield · CelesTrak · Spaceflight News API</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {!logoError
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:24,width:"auto",objectFit:"contain",mixBlendMode:"screen",opacity:0.5,filter:"brightness(1.2)"}}/>
+                :<div style={{fontFamily:"'Space Mono'",fontSize:9,color:"#1a3050",letterSpacing:"0.15em"}}>AUSTRAL ORBIT</div>
+              }
+              <div style={{fontSize:8,color:"#1a3050",fontFamily:"monospace",letterSpacing:"0.1em"}}>Owner: Joaquín Valdebenito Palma</div>
+            </div>
+            <div style={{fontSize:9,color:"#1a3050",fontFamily:"monospace",textAlign:"right"}}>Powered by Skyfield · CelesTrak · Spaceflight News API</div>
           </div>
         </div>
       </div>
