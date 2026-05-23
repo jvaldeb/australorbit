@@ -495,7 +495,14 @@ export default function App() {
   }, [sat]);
   useEffect(() => {
     setNewsLoading(true);
-    fetch(`${API}/news`).then(r => r.json()).then(d => { setNews(d.articles || []); setNewsLoading(false); }).catch(() => setNewsLoading(false));
+    fetch(`${API}/news`)
+      .then(r => r.json())
+      .then(d => {
+        const articles = Array.isArray(d) ? d : (d.articles || d.results || []);
+        setNews(articles);
+        setNewsLoading(false);
+      })
+      .catch(e => { console.error("news fetch:", e); setNewsLoading(false); });
   }, []);
 
   const future    = passes.filter(p => new Date(p.set) > now);
@@ -570,7 +577,7 @@ export default function App() {
                 <span style={{display:"block",width:4,height:4,borderRadius:"50%",background:sat.color,animation:"livePulse 2.2s infinite"}}/>
                 <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:sat.color,letterSpacing:"0.2em",textTransform:"uppercase",transition:"color 0.6s"}}>Datos reales · Skyfield + CelesTrak</span>
               </div>
-              <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(34px,4.8vw,62px)",fontWeight:800,lineHeight:1.06,letterSpacing:"-0.03em",marginBottom:18,color:"#F5F7FA"}}>
+              <h1 style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(24px,3.2vw,42px)",fontWeight:800,lineHeight:1.1,letterSpacing:"-0.02em",marginBottom:16,color:"#F5F7FA"}}>
                 El espacio está<br/>
                 <span style={{color:sat.color,transition:"color 0.6s"}}>sobre Latinoamérica</span><br/>
                 ahora mismo.
