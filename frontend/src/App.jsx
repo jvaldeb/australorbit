@@ -10,7 +10,7 @@ const SATELLITES = [
   { id:"SUCHAI3",  name:"SUCHAI-3",      color:"#e879f9", image:"🌿", chilean:true,  flag:"🇨🇱", desc:"Tercer CubeSat chileno de la U. de Chile. Monitoreo forestal y medioambiental.", orbit:"550 km", speed:"27,400 km/h" },
 ];
 
-const API = "http://127.0.0.1:8000";
+const API = "https://australorbit-production.up.railway.app";
 const SANTIAGO = { lat:-33.4489, lon:-70.6693 };
 const pad = n => String(n).padStart(2,"0");
 const d2r = d => d * Math.PI / 180;
