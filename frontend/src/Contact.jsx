@@ -133,7 +133,7 @@ export default function Contact() {
               display:"flex",flexDirection:"column",gap:4,
               animation:"fadeUp 0.2s ease both",
             }}>
-              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Contacto","/contacto"]].map(([label,href])=>(
+              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
                 <a key={href} href={href} style={{
                   fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:700,
                   color:href==="/contacto"?"#fff":"rgba(255,255,255,0.6)",
@@ -162,7 +162,7 @@ export default function Contact() {
             </div>
 
             <div className="nav-desktop-sections" style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
-              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Contacto","/contacto"]].map(([label,href])=>(
+              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
                 <a key={href} href={href} className="nav-section-link"
                   style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",
                     color:href==="/contacto"?"#fff":"rgba(255,255,255,0.5)",
@@ -273,7 +273,7 @@ export default function Contact() {
               <div style={{...glass({}),padding:"20px 22px"}}>
                 <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.22em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginBottom:14}}>Explorar</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {[["Rastreo en vivo","/"],["Lanzamientos globales","/lanzamientos"],["Clima espacial","/espacio"]].map(([label,href])=>(
+                  {[["Rastreo en vivo","/"],["Lanzamientos globales","/lanzamientos"],["Clima espacial","/espacio"],["Noticias espaciales","/noticias"]].map(([label,href])=>(
                     <a key={href} href={href} style={{fontSize:13,color:"rgba(255,255,255,0.5)",textDecoration:"none",fontFamily:"'Outfit',sans-serif",transition:"color 0.2s",display:"flex",alignItems:"center",gap:8}}>
                       <span style={{width:4,height:4,borderRadius:"50%",background:"rgba(87,199,255,0.4)",flexShrink:0,display:"block"}}/>
                       {label}

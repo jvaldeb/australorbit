@@ -93,6 +93,7 @@ function Nav({ logoError, setLogoError, menuOpen, setMenuOpen, activePath, accen
     ["Rastreo",        "/"],
     ["Lanzamientos",   "/lanzamientos"],
     ["Clima espacial", "/espacio"],
+    ["Noticias",       "/noticias"],
     ["Contacto",       "/contacto"],
   ];
   return (
