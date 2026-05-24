@@ -533,6 +533,8 @@ export default function App() {
           .nav-desktop-clock{display:none!important;}
           .nav-hamburger{display:flex!important;}
           .nav-live-badge{display:none!important;}
+          /* Ocultar tabs Pases/Noticias en mobile — noticias va por su propia página */
+          .section-tabs-desktop{display:none!important;}
 
           /* Ficha técnica — visible en mobile, oculta en desktop */
           .ficha-mobile{display:block!important;}
@@ -674,6 +676,7 @@ export default function App() {
               <a href="/" className="active">Rastreo</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
+              <a href="/noticias">Noticias</a>
               <a href="/contacto">Contacto</a>
             </div>
           )}
@@ -703,6 +706,7 @@ export default function App() {
               <a href="/" className="nav-section-link active" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#fff",padding:"8px 18px",borderRadius:99,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}>Rastreo</a>
               <a href="/lanzamientos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Lanzamientos</a>
               <a href="/espacio" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Clima espacial</a>
+              <a href="/noticias" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Noticias</a>
               <a href="/contacto" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Contacto</a>
               <span style={{width:1,height:16,background:"rgba(255,255,255,0.1)",margin:"0 4px"}}/>
             </div>
@@ -941,9 +945,9 @@ export default function App() {
 
             {/* ── COL 2: Passes ── */}
             <div>
-              {/* Section toggle — Bloom-style pills */}
+              {/* Section toggle — solo visible en desktop */}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}>
-                <div style={{display:"flex",gap:6}}>
+                <div style={{display:"flex",gap:6}} className="section-tabs-desktop">
                   {[["passes","Pases"],["news","Noticias"]].map(([id,label])=>(
                     <button key={id} onClick={()=>setActiveSection(id)}
                       style={pill(activeSection===id, sat.color)}>

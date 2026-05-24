@@ -12,9 +12,10 @@ const glass = (extra = {}) => ({
 });
 
 export default function Contact() {
-  const [form, setForm]       = useState({ name: "", email: "", message: "" });
-  const [status, setStatus]   = useState(null); // null | "sending" | "ok" | "error"
+  const [form, setForm]         = useState({ name: "", email: "", message: "" });
+  const [status, setStatus]     = useState(null);
   const [logoError, setLogoError] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -115,8 +116,37 @@ export default function Contact() {
       <div className="page-padding" style={{position:"relative",zIndex:1,padding:"0 24px",minHeight:"100vh"}}>
         <div style={{maxWidth:1160,margin:"0 auto"}}>
 
+          {/* Mobile menu drawer */}
+          {menuOpen && (
+            <div onClick={()=>setMenuOpen(false)} style={{
+              position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,
+              background:"rgba(0,0,0,0.5)",
+            }}/>
+          )}
+          {menuOpen && (
+            <div style={{
+              position:"fixed",top:0,left:0,right:0,zIndex:210,
+              background:"rgba(0,0,0,0.97)",
+              borderBottom:"1px solid rgba(255,255,255,0.08)",
+              backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",
+              padding:"80px 24px 24px",
+              display:"flex",flexDirection:"column",gap:4,
+              animation:"fadeUp 0.2s ease both",
+            }}>
+              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Contacto","/contacto"]].map(([label,href])=>(
+                <a key={href} href={href} style={{
+                  fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:700,
+                  color:href==="/contacto"?"#fff":"rgba(255,255,255,0.6)",
+                  textDecoration:"none",padding:"14px 0",
+                  borderBottom:"1px solid rgba(255,255,255,0.06)",
+                  transition:"color 0.2s",
+                }}>{label}</a>
+              ))}
+            </div>
+          )}
+
           {/* Nav */}
-          <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 0 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",animation:"fadeIn 0.7s ease both",gap:16}}>
+          <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 0 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",animation:"fadeIn 0.7s ease both",gap:16,position:"relative",zIndex:220}}>
             <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
               {!logoError
                 ? <img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:52,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)"}}/>
@@ -143,7 +173,22 @@ export default function Contact() {
               ))}
             </div>
 
-            <button className="nav-hamburger" aria-label="Menú"><span/><span/><span/></button>
+            <button
+              className="nav-hamburger"
+              onClick={()=>setMenuOpen(o=>!o)}
+              aria-label="Menú"
+              style={{
+                display:"none",alignItems:"center",justifyContent:"center",
+                width:40,height:40,borderRadius:10,
+                background:"rgba(255,255,255,0.06)",
+                border:"1px solid rgba(255,255,255,0.1)",
+                cursor:"pointer",flexDirection:"column",gap:5,padding:0,
+              }}
+            >
+              <span style={{display:"block",width:18,height:1.5,background:"rgba(255,255,255,0.8)",borderRadius:2,transition:"all 0.25s",transform:menuOpen?"rotate(45deg) translate(4.5px,4.5px)":"none"}}/>
+              <span style={{display:"block",width:18,height:1.5,background:"rgba(255,255,255,0.8)",borderRadius:2,transition:"all 0.25s",opacity:menuOpen?0:1}}/>
+              <span style={{display:"block",width:18,height:1.5,background:"rgba(255,255,255,0.8)",borderRadius:2,transition:"all 0.25s",transform:menuOpen?"rotate(-45deg) translate(4.5px,-4.5px)":"none"}}/>
+            </button>
           </nav>
 
           {/* Hero */}
