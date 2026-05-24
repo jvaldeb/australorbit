@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+const API = "https://australorbit-production.up.railway.app";
 const pad = n => String(n).padStart(2, "0");
 
 function CosmicBg() {
@@ -191,16 +192,10 @@ export default function Launches() {
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
-    fetch("https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed")
+    fetch(`${API}/launches/upcoming`)
       .then(r => r.json())
       .then(d => { setLaunches(d.results || []); setLoading(false); })
-      .catch(() => {
-        // fallback to dev API
-        fetch("https://lldev.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed")
-          .then(r => r.json())
-          .then(d => { setLaunches(d.results || []); setLoading(false); })
-          .catch(() => { setError("No se pudo cargar la información de lanzamientos."); setLoading(false); });
-      });
+      .catch(() => { setError("No se pudo cargar la información de lanzamientos."); setLoading(false); });
   }, []);
 
   const upcoming = launches.filter(l => new Date(l.net) > now);

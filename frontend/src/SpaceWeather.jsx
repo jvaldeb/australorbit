@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+const API = "https://australorbit-production.up.railway.app";
 const pad = n => String(n).padStart(2, "0");
 
 function CosmicBg({ kp }) {
@@ -106,7 +107,7 @@ export default function SpaceWeather() {
 
   const fetchData = () => {
     // Kp history
-    fetch("https://services.swpc.noaa.gov/json/planetary_k_index_1m.json")
+    fetch(`${API}/spaceweather/kp`)
       .then(r => r.json())
       .then(d => {
         if (d.length) {
@@ -119,7 +120,7 @@ export default function SpaceWeather() {
       .catch(() => setLoading(false));
 
     // Solar wind
-    fetch("https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json")
+    fetch(`${API}/spaceweather/wind`)
       .then(r => r.json())
       .then(d => {
         const last = d.filter(r => r.speed !== null).slice(-1)[0];
@@ -128,7 +129,7 @@ export default function SpaceWeather() {
       .catch(() => {});
 
     // Alerts
-    fetch("https://services.swpc.noaa.gov/products/alerts.json")
+    fetch(`${API}/spaceweather/alerts`)
       .then(r => r.json())
       .then(d => setAlerts(d.slice(0, 5)))
       .catch(() => {});
