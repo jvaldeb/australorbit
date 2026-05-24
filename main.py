@@ -6,7 +6,6 @@ from deep_translator import GoogleTranslator
 import httpx
 import json
 import os
-import signal
 import threading
 
 app = FastAPI()
@@ -20,64 +19,130 @@ app.add_middleware(
 
 SANTIAGO = wgs84.latlon(-33.4489, -70.6693, elevation_m=570)
 
-SATELLITE_URLS = {
-    "ISS":     "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle",
-    "HST":     "https://celestrak.org/NORAD/elements/gp.php?CATNR=20580&FORMAT=tle",
-    "TIANGONG":"https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=tle",
-    "SSOT":    "https://celestrak.org/NORAD/elements/gp.php?CATNR=38011&FORMAT=tle",
-    "LEMU":    "https://celestrak.org/NORAD/elements/gp.php?CATNR=60532&FORMAT=tle",
-    "SUCHAI2": "https://celestrak.org/NORAD/elements/gp.php?CATNR=57757&FORMAT=tle",
-    "SUCHAI3": "https://celestrak.org/NORAD/elements/gp.php?CATNR=57758&FORMAT=tle",
+SATELLITE_IDS = {
+    "ISS":     25544,
+    "HST":     20580,
+    "TIANGONG":48274,
+    "SSOT":    38011,
+    "LEMU":    60532,
+    "SUCHAI2": 57757,
+    "SUCHAI3": 57758,
 }
 
+# CelesTrak GP endpoint — más confiable que el TLE directo
+def tle_urls(norad_id):
+    return [
+        f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle",
+        f"https://celestrak.org/satcat/gp.php?CATNR={norad_id}&FORMAT=tle",
+    ]
+
 ts = load.timescale()
-_tle_cache      = {}
-_tle_cache_time = {}          # tracks when each TLE was loaded
-TLE_TTL_HOURS   = 6           # refresh TLE every 6 hours
+_tle_cache      = {}   # sat_id -> EarthSatellite
+_tle_cache_time = {}   # sat_id -> datetime
+TLE_TTL_HOURS   = 6
+LOW_INCL_SATS   = {"HST"}
+
 _news_cache = {"date": None, "articles": []}
 NEWS_CACHE_FILE = "news_cache.json"
 
-# Satellites with low inclination pass rarely over Chile — give them more search time
-LOW_INCL_SATS = {"HST"}       # Hubble: 28.5° inclination
 
-def get_satellite(sat_id):
+# ── TLE loading ──────────────────────────────────────────────────────────────
+
+def _download_tle_text(norad_id: int) -> str | None:
+    """Try each URL until one returns valid TLE text."""
+    for url in tle_urls(norad_id):
+        try:
+            import urllib.request
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                text = resp.read().decode("utf-8").strip()
+                if text and len(text.splitlines()) >= 3:
+                    return text
+        except Exception as e:
+            print(f"[TLE] Failed {url}: {e}")
+    return None
+
+
+def _parse_tle_text(text: str):
+    """Parse raw TLE text into EarthSatellite (handles 2-line or 3-line)."""
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if len(lines) >= 3:
+        name, line1, line2 = lines[0], lines[1], lines[2]
+    elif len(lines) == 2:
+        name, line1, line2 = "SAT", lines[0], lines[1]
+    else:
+        return None
+    from skyfield.api import EarthSatellite
+    return EarthSatellite(line1, line2, name, ts)
+
+
+def get_satellite(sat_id: str):
+    """Return cached EarthSatellite, refreshing TLE if stale."""
     now = datetime.now(timezone.utc)
     cached_time = _tle_cache_time.get(sat_id)
-    expired = (cached_time is None or
-               (now - cached_time).total_seconds() > TLE_TTL_HOURS * 3600)
+    expired = (
+        cached_time is None
+        or (now - cached_time).total_seconds() > TLE_TTL_HOURS * 3600
+    )
+
     if sat_id in _tle_cache and not expired:
         return _tle_cache[sat_id]
-    url = SATELLITE_URLS[sat_id]
-    filename = f"tle_{sat_id.lower()}.txt"
-    # Force fresh download if expired
-    if expired and os.path.exists(filename):
-        os.remove(filename)
-    try:
-        sats = load.tle_file(url, filename=filename)
-        _tle_cache[sat_id] = sats[0] if sats else None
-        _tle_cache_time[sat_id] = now
-    except Exception as e:
-        print(f"[TLE] Error loading {sat_id}: {e}")
-        _tle_cache[sat_id] = None
-    return _tle_cache[sat_id]
+
+    norad_id = SATELLITE_IDS[sat_id]
+    tle_file = f"tle_{sat_id.lower()}.txt"
+
+    # Try downloading fresh TLE
+    text = _download_tle_text(norad_id)
+
+    if text:
+        # Save to disk as backup
+        with open(tle_file, "w") as f:
+            f.write(text)
+        sat = _parse_tle_text(text)
+    elif os.path.exists(tle_file):
+        # Download failed — use stale cached file rather than failing
+        print(f"[TLE] Using stale cache for {sat_id}")
+        with open(tle_file, "r") as f:
+            text = f.read()
+        sat = _parse_tle_text(text)
+    else:
+        sat = None
+
+    _tle_cache[sat_id] = sat
+    _tle_cache_time[sat_id] = now
+    return sat
+
+
+def _preload_all_tles():
+    """Pre-download all TLEs on startup so first request is instant."""
+    print("[STARTUP] Pre-loading TLEs...")
+    for sat_id in SATELLITE_IDS:
+        try:
+            sat = get_satellite(sat_id)
+            status = "OK" if sat else "FAILED"
+            print(f"[STARTUP]  {sat_id}: {status}")
+        except Exception as e:
+            print(f"[STARTUP]  {sat_id}: ERROR {e}")
+    print("[STARTUP] TLEs loaded.")
+
+
+# ── Pass calculation ─────────────────────────────────────────────────────────
 
 def _compute_passes(sat_id: str, days: int, result: list):
-    """Runs in a thread; appends result so caller can check timeout."""
     try:
         sat = get_satellite(sat_id)
         if not sat:
             result.append({"error": "No se pudo cargar el satélite"})
             return
+
         ahora = datetime.now(timezone.utc)
         t0 = ts.from_datetime(ahora)
-        # Low-inclination sats pass rarely — search fewer days to avoid timeout
         search_days = min(days, 5) if sat_id in LOW_INCL_SATS else days
         t1 = ts.from_datetime(ahora + timedelta(days=search_days))
-        # Lower min elevation for HST so we find more passes
         min_el = 5.0 if sat_id in LOW_INCL_SATS else 10.0
+
         tiempos, eventos = sat.find_events(SANTIAGO, t0, t1, altitude_degrees=min_el)
-        passes = []
-        pase = {}
+
+        passes, pase = [], {}
         for t, evento in zip(tiempos, eventos):
             dt = t.utc_datetime()
             dif = (sat - SANTIAGO).at(t)
@@ -89,46 +154,58 @@ def _compute_passes(sat_id: str, days: int, result: list):
                 pase["max_el"] = float(round(alt.degrees, 1))
                 pase["max_az"] = float(round(az.degrees, 1))
             elif evento == 2:
-                pase["set"]      = dt.isoformat()
-                pase["set_az"]   = float(round(az.degrees, 1))
+                pase["set"]    = dt.isoformat()
+                pase["set_az"] = float(round(az.degrees, 1))
                 rise_dt = datetime.fromisoformat(pase["rise"])
                 pase["duration"] = int((dt - rise_dt.replace(tzinfo=timezone.utc)).seconds)
                 pase["visible"]  = bool(pase.get("max_el", 0) > 25)
                 if "rise" in pase and "max" in pase:
                     passes.append(pase)
                 pase = {}
+
         result.append({"satellite": sat_id, "passes": passes})
+
     except Exception as e:
         print(f"[PASSES] Error {sat_id}: {e}")
         result.append({"error": str(e)})
 
+
 def get_passes(sat_id: str, days: int = 3):
-    if sat_id not in SATELLITE_URLS:
+    if sat_id not in SATELLITE_IDS:
         return {"error": "Satélite no encontrado"}
-    timeout_sec = 25 if sat_id in LOW_INCL_SATS else 20
+
+    # If TLE already cached, calculation is fast — no thread needed for timeout
+    # Still use thread to protect against edge-case hangs
+    timeout_sec = 30 if sat_id in LOW_INCL_SATS else 25
     result = []
     t = threading.Thread(target=_compute_passes, args=(sat_id, days, result))
     t.start()
     t.join(timeout=timeout_sec)
+
     if not result:
-        print(f"[PASSES] Timeout calculando pases de {sat_id}")
-        # Invalidate cache so next request downloads fresh TLE
+        print(f"[PASSES] Timeout {sat_id} — invalidating cache")
         _tle_cache.pop(sat_id, None)
         _tle_cache_time.pop(sat_id, None)
-        return {"satellite": sat_id, "passes": [],
-                "warning": f"Timeout calculando pases de {sat_id}. Intenta nuevamente."}
+        return {
+            "satellite": sat_id,
+            "passes": [],
+            "warning": f"Timeout calculando pases de {sat_id}. Intenta nuevamente.",
+        }
     return result[0]
 
+
+# ── Position ─────────────────────────────────────────────────────────────────
+
 def get_position(sat_id: str):
-    if sat_id not in SATELLITE_URLS:
+    if sat_id not in SATELLITE_IDS:
         return {"error": "Satélite no encontrado"}
     sat = get_satellite(sat_id)
     if not sat:
         return {"error": "No se pudo cargar"}
     t = ts.now()
     geocentric = sat.at(t)
-    subpoint = wgs84.subpoint(geocentric)
-    dif = (sat - SANTIAGO).at(t)
+    subpoint   = wgs84.subpoint(geocentric)
+    dif        = (sat - SANTIAGO).at(t)
     alt, az, dist = dif.altaz()
     return {
         "satellite": sat_id,
@@ -142,6 +219,9 @@ def get_position(sat_id: str):
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+
+# ── News ─────────────────────────────────────────────────────────────────────
+
 def translate(text: str) -> str:
     try:
         if not text or len(text.strip()) < 5:
@@ -149,6 +229,7 @@ def translate(text: str) -> str:
         return GoogleTranslator(source="en", target="es").translate(text[:500])
     except Exception:
         return text
+
 
 def load_news_cache():
     if os.path.exists(NEWS_CACHE_FILE):
@@ -159,9 +240,11 @@ def load_news_cache():
             pass
     return {"date": None, "articles": []}
 
+
 def save_news_cache(data):
     with open(NEWS_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
 
 async def fetch_and_translate_news():
     async with httpx.AsyncClient() as client:
@@ -171,27 +254,24 @@ async def fetch_and_translate_news():
         )
         data = r.json()
     articles = []
+    meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
     for a in data.get("results", []):
         try:
-            title_es   = translate(a["title"])
-            summary_es = translate(a.get("summary", "")[:400])
             pub = datetime.fromisoformat(a["published_at"].replace("Z", "+00:00"))
-            meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
-            fecha = f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}"
             articles.append({
-                "title":         title_es,
+                "title":         translate(a["title"]),
                 "title_en":      a["title"],
-                "summary":       summary_es,
+                "summary":       translate(a.get("summary", "")[:400]),
                 "url":           a["url"],
                 "image":         a.get("image_url", ""),
                 "source":        a["news_site"],
-                "published":     fecha,
+                "published":     f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}",
                 "published_raw": a["published_at"],
             })
         except Exception as e:
             print(f"[NEWS] Error: {e}")
-            continue
     return articles
+
 
 async def get_news_cached():
     global _news_cache
@@ -209,6 +289,16 @@ async def get_news_cached():
     except Exception as e:
         print(f"[NEWS] Error: {e}")
         return _news_cache.get("articles", [])
+
+
+# ── Startup: pre-load TLEs in background ─────────────────────────────────────
+
+@app.on_event("startup")
+async def startup_event():
+    threading.Thread(target=_preload_all_tles, daemon=True).start()
+
+
+# ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
@@ -236,51 +326,39 @@ async def refresh_news():
     articles = await get_news_cached()
     return {"status": "actualizado", "count": len(articles)}
 
-# ── Proxy NOAA space weather (evita CORS desde el browser) ──────────────────
 @app.get("/spaceweather/kp")
 async def kp_index():
     async with httpx.AsyncClient() as client:
         r = await client.get(
-            "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
-            timeout=10
-        )
+            "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json", timeout=10)
         return r.json()
 
 @app.get("/spaceweather/wind")
 async def solar_wind():
     async with httpx.AsyncClient() as client:
         r = await client.get(
-            "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
-            timeout=10
-        )
+            "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json", timeout=10)
         return r.json()
 
 @app.get("/spaceweather/alerts")
 async def space_alerts():
     async with httpx.AsyncClient() as client:
         r = await client.get(
-            "https://services.swpc.noaa.gov/products/alerts.json",
-            timeout=10
-        )
+            "https://services.swpc.noaa.gov/products/alerts.json", timeout=10)
         return r.json()
 
-# ── Proxy Launch Library 2 ───────────────────────────────────────────────────
 @app.get("/launches/upcoming")
 async def launches_upcoming():
     async with httpx.AsyncClient() as client:
         try:
             r = await client.get(
                 "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed",
-                timeout=20,
-                headers={"User-Agent": "AustralOrbit/1.0"}
-            )
+                timeout=20, headers={"User-Agent": "AustralOrbit/1.0"})
             if r.status_code == 429:
                 raise Exception("rate limit")
             return r.json()
         except Exception:
             r = await client.get(
                 "https://lldev.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed",
-                timeout=20
-            )
+                timeout=20)
             return r.json()
- 
