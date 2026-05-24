@@ -4,14 +4,20 @@ import App from "./App.jsx";
 import Launches from "./Launches.jsx";
 import SpaceWeather from "./SpaceWeather.jsx";
 
-const path = window.location.pathname;
+const path = window.location.pathname.replace(/\/$/, "") || "/";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
+let Component;
 if (path === "/lanzamientos") {
-  root.render(<Launches/>);
+  Component = Launches;
 } else if (path === "/espacio") {
-  root.render(<SpaceWeather/>);
+  Component = SpaceWeather;
 } else {
-  root.render(<App/>);
+  Component = App;
 }
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <Component />
+  </React.StrictMode>
+);
+
