@@ -674,6 +674,7 @@ export default function App() {
               <a href="/" className="active">Rastreo</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
+              <a href="/contacto">Contacto</a>
             </div>
           )}
           {/* Backdrop */}
@@ -702,6 +703,7 @@ export default function App() {
               <a href="/" className="nav-section-link active" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#fff",padding:"8px 18px",borderRadius:99,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}>Rastreo</a>
               <a href="/lanzamientos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Lanzamientos</a>
               <a href="/espacio" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Clima espacial</a>
+              <a href="/contacto" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Contacto</a>
               <span style={{width:1,height:16,background:"rgba(255,255,255,0.1)",margin:"0 4px"}}/>
             </div>
 
