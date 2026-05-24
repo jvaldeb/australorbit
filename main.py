@@ -6,6 +6,8 @@ from deep_translator import GoogleTranslator
 import httpx
 import json
 import os
+import signal
+import threading
 
 app = FastAPI()
 
@@ -29,51 +31,93 @@ SATELLITE_URLS = {
 }
 
 ts = load.timescale()
-_tle_cache = {}
+_tle_cache      = {}
+_tle_cache_time = {}          # tracks when each TLE was loaded
+TLE_TTL_HOURS   = 6           # refresh TLE every 6 hours
 _news_cache = {"date": None, "articles": []}
 NEWS_CACHE_FILE = "news_cache.json"
 
+# Satellites with low inclination pass rarely over Chile — give them more search time
+LOW_INCL_SATS = {"HST"}       # Hubble: 28.5° inclination
+
 def get_satellite(sat_id):
-    if sat_id in _tle_cache:
+    now = datetime.now(timezone.utc)
+    cached_time = _tle_cache_time.get(sat_id)
+    expired = (cached_time is None or
+               (now - cached_time).total_seconds() > TLE_TTL_HOURS * 3600)
+    if sat_id in _tle_cache and not expired:
         return _tle_cache[sat_id]
     url = SATELLITE_URLS[sat_id]
     filename = f"tle_{sat_id.lower()}.txt"
-    sats = load.tle_file(url, filename=filename)
-    _tle_cache[sat_id] = sats[0] if sats else None
+    # Force fresh download if expired
+    if expired and os.path.exists(filename):
+        os.remove(filename)
+    try:
+        sats = load.tle_file(url, filename=filename)
+        _tle_cache[sat_id] = sats[0] if sats else None
+        _tle_cache_time[sat_id] = now
+    except Exception as e:
+        print(f"[TLE] Error loading {sat_id}: {e}")
+        _tle_cache[sat_id] = None
     return _tle_cache[sat_id]
+
+def _compute_passes(sat_id: str, days: int, result: list):
+    """Runs in a thread; appends result so caller can check timeout."""
+    try:
+        sat = get_satellite(sat_id)
+        if not sat:
+            result.append({"error": "No se pudo cargar el satélite"})
+            return
+        ahora = datetime.now(timezone.utc)
+        t0 = ts.from_datetime(ahora)
+        # Low-inclination sats pass rarely — search fewer days to avoid timeout
+        search_days = min(days, 5) if sat_id in LOW_INCL_SATS else days
+        t1 = ts.from_datetime(ahora + timedelta(days=search_days))
+        # Lower min elevation for HST so we find more passes
+        min_el = 5.0 if sat_id in LOW_INCL_SATS else 10.0
+        tiempos, eventos = sat.find_events(SANTIAGO, t0, t1, altitude_degrees=min_el)
+        passes = []
+        pase = {}
+        for t, evento in zip(tiempos, eventos):
+            dt = t.utc_datetime()
+            dif = (sat - SANTIAGO).at(t)
+            alt, az, dist = dif.altaz()
+            if evento == 0:
+                pase = {"rise": dt.isoformat(), "rise_az": float(round(az.degrees, 1))}
+            elif evento == 1:
+                pase["max"]    = dt.isoformat()
+                pase["max_el"] = float(round(alt.degrees, 1))
+                pase["max_az"] = float(round(az.degrees, 1))
+            elif evento == 2:
+                pase["set"]      = dt.isoformat()
+                pase["set_az"]   = float(round(az.degrees, 1))
+                rise_dt = datetime.fromisoformat(pase["rise"])
+                pase["duration"] = int((dt - rise_dt.replace(tzinfo=timezone.utc)).seconds)
+                pase["visible"]  = bool(pase.get("max_el", 0) > 25)
+                if "rise" in pase and "max" in pase:
+                    passes.append(pase)
+                pase = {}
+        result.append({"satellite": sat_id, "passes": passes})
+    except Exception as e:
+        print(f"[PASSES] Error {sat_id}: {e}")
+        result.append({"error": str(e)})
 
 def get_passes(sat_id: str, days: int = 3):
     if sat_id not in SATELLITE_URLS:
         return {"error": "Satélite no encontrado"}
-    sat = get_satellite(sat_id)
-    if not sat:
-        return {"error": "No se pudo cargar el satélite"}
-    ahora = datetime.now(timezone.utc)
-    t0 = ts.from_datetime(ahora)
-    t1 = ts.from_datetime(ahora + timedelta(days=days))
-    tiempos, eventos = sat.find_events(SANTIAGO, t0, t1, altitude_degrees=10.0)
-    passes = []
-    pase = {}
-    for t, evento in zip(tiempos, eventos):
-        dt = t.utc_datetime()
-        dif = (sat - SANTIAGO).at(t)
-        alt, az, dist = dif.altaz()
-        if evento == 0:
-            pase = {"rise": dt.isoformat(), "rise_az": float(round(az.degrees, 1))}
-        elif evento == 1:
-            pase["max"]    = dt.isoformat()
-            pase["max_el"] = float(round(alt.degrees, 1))
-            pase["max_az"] = float(round(az.degrees, 1))
-        elif evento == 2:
-            pase["set"]     = dt.isoformat()
-            pase["set_az"]  = float(round(az.degrees, 1))
-            rise_dt = datetime.fromisoformat(pase["rise"])
-            pase["duration"] = int((dt - rise_dt.replace(tzinfo=timezone.utc)).seconds)
-            pase["visible"]  = bool(pase.get("max_el", 0) > 25)
-            if "rise" in pase and "max" in pase:
-                passes.append(pase)
-            pase = {}
-    return {"satellite": sat_id, "passes": passes}
+    timeout_sec = 25 if sat_id in LOW_INCL_SATS else 20
+    result = []
+    t = threading.Thread(target=_compute_passes, args=(sat_id, days, result))
+    t.start()
+    t.join(timeout=timeout_sec)
+    if not result:
+        print(f"[PASSES] Timeout calculando pases de {sat_id}")
+        # Invalidate cache so next request downloads fresh TLE
+        _tle_cache.pop(sat_id, None)
+        _tle_cache_time.pop(sat_id, None)
+        return {"satellite": sat_id, "passes": [],
+                "warning": f"Timeout calculando pases de {sat_id}. Intenta nuevamente."}
+    return result[0]
 
 def get_position(sat_id: str):
     if sat_id not in SATELLITE_URLS:
