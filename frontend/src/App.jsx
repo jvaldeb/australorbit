@@ -389,6 +389,7 @@ export default function App() {
   const [notifDismissed, setNotifDismissed] = useState(false);
   const [logoError, setLogoError]           = useState(false);
   const [fichaOpen, setFichaOpen]           = useState(false);
+  const [menuOpen, setMenuOpen]             = useState(false);
   const [alertsEnabled, setAlertsEnabled]   = useState(false);
   const [alertMinutes, setAlertMinutes]     = useState(10);
   const [alertPermission, setAlertPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
@@ -510,9 +511,88 @@ export default function App() {
         .sat-pill:hover{transform:translateY(-1px);}
         .glass-card{transition:border-color 0.2s;}
         .glass-card:hover{border-color:rgba(255,255,255,0.13)!important;}
-        @media(max-width:1080px){.three-col{grid-template-columns:260px 1fr!important;}.news-col{display:none!important;}}
-        @media(max-width:820px){.three-col{grid-template-columns:1fr!important;}.left-col{display:none!important;}}
-        @media(max-width:680px){.hero-grid{grid-template-columns:1fr!important;}.planet-col{display:none!important;}}
+
+        /* ── TABLET ── */
+        @media(max-width:1080px){
+          .three-col{grid-template-columns:260px 1fr!important;}
+          .news-col{display:none!important;}
+        }
+        @media(max-width:820px){
+          .three-col{grid-template-columns:1fr!important;}
+          .left-col{display:none!important;}
+        }
+        @media(max-width:680px){
+          .hero-grid{grid-template-columns:1fr!important;}
+          .planet-col{display:none!important;}
+        }
+
+        /* ── MOBILE ── */
+        @media(max-width:600px){
+          /* Nav: hide desktop sections, show hamburger */
+          .nav-desktop-sections{display:none!important;}
+          .nav-desktop-clock{display:none!important;}
+          .nav-hamburger{display:flex!important;}
+          .nav-live-badge{display:none!important;}
+
+          /* Mobile menu drawer */
+          .mobile-menu{
+            display:flex;flex-direction:column;gap:4px;
+            position:fixed;top:0;left:0;right:0;
+            background:rgba(0,0,0,0.97);
+            border-bottom:1px solid rgba(255,255,255,0.08);
+            backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+            padding:80px 24px 24px;
+            z-index:150;
+            animation:fadeUp 0.2s ease both;
+          }
+          .mobile-menu a{
+            font-family:'Syne',sans-serif;font-size:22px;font-weight:700;
+            color:rgba(255,255,255,0.7);text-decoration:none;
+            padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);
+            transition:color 0.2s;letter-spacing:0.02em;
+          }
+          .mobile-menu a.active{color:#fff;}
+          .mobile-menu a:last-child{border-bottom:none;}
+
+          /* Hero mobile */
+          .hero-mobile-next{display:flex!important;}
+          .hero-description{display:none!important;}
+          .hero-padding{padding:32px 0 28px!important;}
+          .hero-title-line{font-size:32px!important;}
+          .hero-title-italic{font-size:34px!important;}
+          .hero-badge{margin-bottom:18px!important;}
+
+          /* Earth bg smaller on mobile */
+          .earth-bg-img{width:110vw!important;height:110vw!important;opacity:0.15!important;}
+
+          /* Content padding */
+          .page-padding{padding:0 16px!important;}
+
+          /* Sat picker — smaller pills */
+          .sat-picker-label{font-size:7px!important;}
+
+          /* Pass cards */
+          .pass-time-num{font-size:20px!important;}
+          .pass-cd{font-size:16px!important;}
+
+          /* Mobile next pass strip — compact */
+          .next-pass-card{flex-direction:column!important;gap:0!important;}
+          .next-pass-cell{padding:12px 16px!important;font-size:26px!important;}
+          .next-pass-cell-time{font-size:26px!important;}
+        }
+
+        /* Nav on mobile: just logo + hamburger */
+        .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
+        .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
+        .nav-hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4.5px,4.5px);}
+        .nav-hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+        .nav-hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4.5px,-4.5px);}
+
+        /* Mobile clock — compact, right of logo */
+        .nav-mobile-clock{display:none;}
+        @media(max-width:600px){
+          .nav-mobile-clock{display:block;font-family:'IBM Plex Mono',monospace;font-size:18px;color:#fff;letter-spacing:0.04em;margin-left:auto;margin-right:12px;}
+        }
       `}</style>
 
       {/* ── BACKGROUND ── */}
@@ -539,6 +619,7 @@ export default function App() {
               filter:"saturate(0.8) brightness(0.9)",
               pointerEvents:"none",
               userSelect:"none",
+              className:"earth-bg-img",
             }}
           />
         </div>
@@ -580,106 +661,101 @@ export default function App() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div style={{position:"relative",zIndex:1,padding:"0 24px",minHeight:"100vh"}}>
+      <div className="page-padding" style={{position:"relative",zIndex:1,padding:"0 24px",minHeight:"100vh"}}>
         <div style={{maxWidth:1160,margin:"0 auto"}}>
 
+          {/* ── MOBILE MENU DRAWER ── */}
+          {menuOpen && (
+            <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
+              <a href="/" className="active">Rastreo</a>
+              <a href="/lanzamientos">Lanzamientos</a>
+              <a href="/espacio">Clima espacial</a>
+            </div>
+          )}
+          {/* Backdrop */}
+          {menuOpen && <div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:140,background:"rgba(0,0,0,0.5)"}}/>}
+
           {/* ── NAV ── */}
-          <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 0 18px",borderBottom:"1px solid rgba(255,255,255,0.07)",animation:"fadeIn 0.7s ease both",gap:24}}>
+          <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 0 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",animation:"fadeIn 0.7s ease both",gap:16,position:"relative",zIndex:160}}>
 
             {/* Logo */}
-            <div style={{display:"flex",alignItems:"center",gap:14,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:62,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:52,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
                 :<span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AO</span>
               }
               <div>
-                <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                  <span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AUSTRAL</span>
-                  <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",letterSpacing:"0.02em"}}>Orbit</span>
+                <div style={{display:"flex",alignItems:"baseline",gap:7}}>
+                  <span style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AUSTRAL</span>
+                  <span style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s"}}>Orbit</span>
                 </div>
-                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7,letterSpacing:"0.3em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginTop:2}}>Santiago · 33.4°S · Chile</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7,letterSpacing:"0.28em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginTop:1}}>Santiago · 33.4°S</div>
               </div>
             </div>
 
-            {/* ── MAIN SECTION LINKS ── */}
-            <div style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
-              {/* Active page indicator — Rastreo */}
-              <a href="/" className="nav-section-link active" style={{
-                fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",
-                color:"#fff",opacity:1,
-                padding:"8px 20px",borderRadius:99,
-                background:"rgba(255,255,255,0.06)",
-                border:"1px solid rgba(255,255,255,0.12)",
-              }}>
-                Rastreo
-              </a>
-              <a href="/lanzamientos" className="nav-section-link" style={{
-                fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",
-                color:"rgba(255,255,255,0.55)",
-                padding:"8px 20px",borderRadius:99,
-                border:"1px solid transparent",
-              }}>
-                Lanzamientos
-              </a>
-              <a href="/espacio" className="nav-section-link" style={{
-                fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",
-                color:"rgba(255,255,255,0.55)",
-                padding:"8px 20px",borderRadius:99,
-                border:"1px solid transparent",
-              }}>
-                Clima espacial
-              </a>
-              {/* Separator — future sections go here */}
-              <span style={{width:1,height:18,background:"rgba(255,255,255,0.1)",margin:"0 6px"}}/>
-              {/* Placeholder for future sections — easy to add more <a> above this comment */}
+            {/* ── DESKTOP: section links centradas ── */}
+            <div className="nav-desktop-sections" style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
+              <a href="/" className="nav-section-link active" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#fff",padding:"8px 18px",borderRadius:99,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}>Rastreo</a>
+              <a href="/lanzamientos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Lanzamientos</a>
+              <a href="/espacio" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Clima espacial</a>
+              <span style={{width:1,height:16,background:"rgba(255,255,255,0.1)",margin:"0 4px"}}/>
             </div>
 
-            {/* Right side: live badge + clock */}
-            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+            {/* MOBILE: reloj compacto */}
+            <div className="nav-mobile-clock">{`${pad(now.getHours())}:${pad(now.getMinutes())}`}</div>
+
+            {/* Right: live + clock (desktop) + hamburger (mobile) */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+              {/* Live badge — desktop only */}
               {pos && (
-                <div style={{display:"flex",alignItems:"center",gap:7,padding:"5px 12px",borderRadius:99,...glass({}),transition:"all 0.6s"}}>
+                <div className="nav-live-badge" style={{display:"flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:99,...glass({}),transition:"all 0.6s"}}>
                   <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:isLive?sat.color:"rgba(255,255,255,0.15)",animation:isLive?"livePulse 2s infinite":"none",boxShadow:isLive?`0 0 8px ${sat.color}`:"none"}}/>
-                  <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:isLive?sat.color:"rgba(255,255,255,0.25)",letterSpacing:"0.1em"}}>{isLive?"VISIBLE":"NO VISIBLE"}</span>
+                  <span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:isLive?sat.color:"rgba(255,255,255,0.25)",letterSpacing:"0.1em",whiteSpace:"nowrap"}}>{isLive?"VISIBLE":"NO VISIBLE"}</span>
                 </div>
               )}
-              <div style={{textAlign:"right"}}>
-                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:22,color:"#fff",letterSpacing:"0.04em",lineHeight:1}}>{`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`}</div>
-                <div style={{fontSize:7,color:"rgba(255,255,255,0.2)",letterSpacing:"0.22em",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>HORA CHILE</div>
+              {/* Clock — desktop only */}
+              <div className="nav-desktop-clock" style={{textAlign:"right"}}>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:20,color:"#fff",letterSpacing:"0.04em",lineHeight:1}}>{`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`}</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.2)",letterSpacing:"0.2em",marginTop:1,fontFamily:"'IBM Plex Mono',monospace"}}>HORA CHILE</div>
               </div>
+              {/* Hamburger — mobile only */}
+              <button className={`nav-hamburger${menuOpen?" open":""}`} onClick={()=>setMenuOpen(o=>!o)} aria-label="Menú">
+                <span/><span/><span/>
+              </button>
             </div>
           </nav>
 
           {/* ── HERO ── */}
-          <div className="hero-grid" style={{display:"grid",gridTemplateColumns:"1fr 400px",gap:56,padding:"64px 0 52px",alignItems:"center"}}>
+          <div className="hero-grid" style={{display:"grid",gridTemplateColumns:"1fr 400px",gap:56,padding:"48px 0 40px",alignItems:"center"}}>
             <div style={{animation:"fadeUp 0.9s ease both"}}>
               {/* Live badge */}
-              <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"5px 14px",borderRadius:99,...glass({}),marginBottom:28,transition:"all 0.6s"}}>
+              <div className="hero-badge" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"5px 14px",borderRadius:99,...glass({}),marginBottom:22,transition:"all 0.6s"}}>
                 <span style={{display:"block",width:4,height:4,borderRadius:"50%",background:sat.color,boxShadow:`0 0 8px ${sat.color}`,animation:"livePulse 2.2s infinite"}}/>
                 <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:sat.color,letterSpacing:"0.2em",textTransform:"uppercase"}}>Datos reales · Skyfield + CelesTrak</span>
               </div>
 
-              {/* Big title — Bloom-style serif italic */}
-              <h1 style={{marginBottom:20,lineHeight:1.08,letterSpacing:"-0.02em"}}>
-                <span style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(26px,3.5vw,46px)",fontWeight:800,color:"#fff",display:"block"}}>El espacio está</span>
-                <span style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(28px,3.8vw,50px)",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",display:"block"}}>sobre Latinoamérica</span>
-                <span style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(26px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
+              {/* Title */}
+              <h1 style={{marginBottom:16,lineHeight:1.08,letterSpacing:"-0.02em"}}>
+                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"#fff",display:"block"}}>El espacio está</span>
+                <span className="hero-title-italic" style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(30px,3.8vw,50px)",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",display:"block"}}>sobre Latinoamérica</span>
+                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:40}}>
+              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
                 Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
               </p>
 
-              {/* Next pass card — Bloom style */}
+              {/* Next pass — full card desktop, compact strip mobile */}
               {next && (
-                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:18,overflow:"hidden",...glass({})}}>
-                  <div style={{padding:"18px 24px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
-                    <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.22em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:6}}>Próximo · {sat.name}</div>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:34,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
+                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%"}}>
+                  <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
+                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
                     <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · Chile</div>
                   </div>
-                  <div style={{padding:"18px 24px"}}>
-                    <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.22em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:6}}>Faltan</div>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:34,fontWeight:600,color:"#fff",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
+                  <div style={{padding:"14px 20px"}}>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
                     <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
                   </div>
                 </div>
