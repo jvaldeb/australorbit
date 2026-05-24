@@ -670,7 +670,13 @@ export default function App() {
                 <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7.5,letterSpacing:"0.28em",color:"#1E3A50",textTransform:"uppercase"}}>Santiago · 33.4°S · Chile</span>
               </div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              {/* nav links */}
+              <div style={{display:"flex",gap:6}}>
+                {[["🚀 Lanzamientos","/lanzamientos","#C47B48"],["🌌 Clima espacial","/espacio","#6EE7B7"]].map(([l,h,c])=>(
+                  <a key={h} href={h} style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",color:c,padding:"6px 12px",borderRadius:8,background:`${c}12`,border:`1px solid ${c}33`,textDecoration:"none",letterSpacing:"0.06em",transition:"all 0.2s",whiteSpace:"nowrap",fontWeight:500}}>{l}</a>
+                ))}
+              </div>
               {pos&&(
                 <div style={{display:"flex",alignItems:"center",gap:7,padding:"5px 11px",borderRadius:8,background:isLive?sat.color+"14":"rgba(255,255,255,0.025)",border:`1px solid ${isLive?sat.color+"40":"rgba(255,255,255,0.055)"}`,transition:"all 0.6s"}}>
                   <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:isLive?sat.color:"#1E3A50",animation:isLive?"livePulse 2s infinite":"none"}}/>
@@ -887,4 +893,4 @@ export default function App() {
       </div>
     </>
   );
-}
+} 
