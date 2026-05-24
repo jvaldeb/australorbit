@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from skyfield.api import load, wgs84
 from datetime import datetime, timedelta, timezone
 from deep_translator import GoogleTranslator
@@ -7,6 +8,7 @@ import httpx
 import json
 import os
 import threading
+import resend
 
 app = FastAPI()
 
@@ -362,3 +364,49 @@ async def launches_upcoming():
                 "https://lldev.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed",
                 timeout=20)
             return r.json()
+
+
+# ── Contact form ──────────────────────────────────────────────────────────────
+
+class ContactForm(BaseModel):
+    name: str
+    email: str
+    message: str
+
+@app.post("/contact")
+async def contact(form: ContactForm):
+    resend.api_key = os.getenv("RESEND_API_KEY", "")
+    tu_email = os.getenv("TU_EMAIL", "")
+
+    if not resend.api_key or not tu_email:
+        return {"ok": False, "error": "Servidor no configurado para envío de emails"}
+
+    try:
+        resend.Emails.send({
+            "from": "Austral Orbit <onboarding@resend.dev>",
+            "to": tu_email,
+            "subject": f"Mensaje de {form.name} — Austral Orbit",
+            "html": f"""
+                <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#f9f9f9;border-radius:12px;">
+                  <h2 style="margin:0 0 24px;color:#050816;">📡 Nuevo mensaje — Austral Orbit</h2>
+                  <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                      <td style="padding:10px 0;color:#555;font-size:13px;width:100px;">Nombre</td>
+                      <td style="padding:10px 0;font-weight:600;color:#111;">{form.name}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:10px 0;color:#555;font-size:13px;">Email</td>
+                      <td style="padding:10px 0;color:#57C7FF;">{form.email}</td>
+                    </tr>
+                  </table>
+                  <div style="margin-top:20px;padding:16px;background:#fff;border-radius:8px;border:1px solid #eee;">
+                    <p style="margin:0;color:#333;line-height:1.7;font-size:14px;">{form.message}</p>
+                  </div>
+                  <p style="margin-top:24px;font-size:11px;color:#aaa;">Enviado desde australorbit.com</p>
+                </div>
+            """,
+        })
+        return {"ok": True}
+    except Exception as e:
+        print(f"[CONTACT] Error: {e}")
+        return {"ok": False, "error": str(e)}
