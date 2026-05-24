@@ -500,6 +500,8 @@ export default function App() {
         @keyframes issFloat{0%{transform:translate(0,0) scale(1) rotate(0deg)}25%{transform:translate(18px,-12px) scale(1.012) rotate(0.4deg)}50%{transform:translate(32px,6px) scale(1.018) rotate(-0.3deg)}75%{transform:translate(14px,20px) scale(1.008) rotate(0.5deg)}100%{transform:translate(0,0) scale(1) rotate(0deg)}}
         @keyframes issFadeIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
         @keyframes bgPulse{0%,100%{opacity:0.13}50%{opacity:0.19}}
+        @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.022)}}
         .nav-section-link{position:relative;text-decoration:none;transition:all 0.25s;white-space:nowrap;}
         .nav-section-link::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform 0.3s ease;}
         .nav-section-link:hover::after,.nav-section-link.active::after{transform:scaleX(1);}
@@ -518,26 +520,25 @@ export default function App() {
         {/* Deep black base */}
         <div style={{position:"absolute",inset:0,background:"#000"}}/>
 
-        {/* ISS hero image — animated float */}
+        {/* Earth hero background */}
         <div style={{
-          position:"absolute",
-          inset:0,
-          animation:"issFadeIn 2.2s ease both",
+          position:"absolute", inset:0,
+          animation:"earthFadeIn 2.5s ease both",
         }}>
           <img
-            src="/iss-bg.png"
+            src="/earth-bg.png"
             alt=""
             style={{
               position:"absolute",
               top:"50%", left:"50%",
               transform:"translate(-50%,-50%)",
-              width:"100%", height:"100%",
-              objectFit:"cover",
-              objectPosition:"center 35%",
-              opacity:0.16,
-              animation:"issFloat 38s ease-in-out infinite, bgPulse 16s ease-in-out infinite",
-              filter:"saturate(0.7) brightness(0.85)",
-              transformOrigin:"center center",
+              width:"90vmin", height:"90vmin",
+              objectFit:"contain",
+              opacity:0.22,
+              animation:"earthDrift 55s ease-in-out infinite",
+              filter:"saturate(0.8) brightness(0.9)",
+              pointerEvents:"none",
+              userSelect:"none",
             }}
           />
         </div>
