@@ -1,10 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { inject } from "@vercel/analytics";
 import App from "./App.jsx";
 import Launches from "./Launches.jsx";
 import SpaceWeather from "./SpaceWeather.jsx";
 import Contact from "./Contact.jsx";
 import News from "./News.jsx";
+
+inject();
 
 const path = window.location.pathname.replace(/\/$/, "") || "/";
 
