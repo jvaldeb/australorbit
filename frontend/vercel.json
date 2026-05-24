@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/lanzamientos", "destination": "/index.html" },
+    { "source": "/espacio", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
+ 
