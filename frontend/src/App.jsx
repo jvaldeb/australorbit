@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 /* ─────────────────────────────────────────────
    SATELLITE REGISTRY
@@ -544,8 +544,53 @@ export default function App() {
   const [logoError, setLogoError]       = useState(false);
   const [section, setSection]           = useState("passes");
   const [fichaOpen, setFichaOpen]       = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [alertMinutes, setAlertMinutes]   = useState(10);
+  const [alertPermission, setAlertPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
+  const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+
+  // ── Alert scheduling ──
+  const scheduleAlerts = useCallback((passList, sat, minutes) => {
+    // Clear existing timers
+    alertTimers.current.forEach(t => clearTimeout(t));
+    alertTimers.current = [];
+    if (!alertsEnabled || Notification.permission !== "granted") return;
+    const now = Date.now();
+    passList.forEach(pass => {
+      const riseMs  = new Date(pass.rise).getTime();
+      const fireMs  = riseMs - minutes * 60000;
+      const delay   = fireMs - now;
+      if (delay < 0) return; // already passed
+      const t = setTimeout(() => {
+        const mins = Math.round((riseMs - Date.now()) / 60000);
+        new Notification(`🛰 ${sat.name} pasa sobre Santiago`, {
+          body: `En ${mins} min · Elevación máx: ${pass.max_el}° · ${pass.visible ? "👁 Visible a simple vista" : "Usa binoculares"}`,
+          icon: "/logo.png",
+          badge: "/logo.png",
+          tag: `${sat.id}-${pass.rise}`,
+        });
+      }, delay);
+      alertTimers.current.push(t);
+    });
+  }, [alertsEnabled]);
+
+  useEffect(() => {
+    if (alertsEnabled && passes.length > 0) scheduleAlerts(passes, sat, alertMinutes);
+    return () => alertTimers.current.forEach(t => clearTimeout(t));
+  }, [alertsEnabled, passes, sat, alertMinutes, scheduleAlerts]);
+
+  const requestAlerts = async () => {
+    if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones."); return; }
+    if (Notification.permission === "granted") {
+      setAlertsEnabled(a => !a);
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    setAlertPermission(perm);
+    if (perm === "granted") setAlertsEnabled(true);
+  };
   useEffect(() => {
     setLoading(true); setError(null); setPasses([]); setNotifDismissed(false); setFichaOpen(false);
     fetch(`${API}/passes/${sat.id}`)
@@ -772,9 +817,27 @@ export default function App() {
                   <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700,letterSpacing:"-0.02em",color:"#F5F7FA"}}>Pases de <span style={{color:sat.color,transition:"color 0.6s"}}>{sat.name}</span></h2>
                   <div style={{fontSize:10,color:"#1E3A50",marginTop:2,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
                 </div>
-                <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"6px 12px",borderRadius:8,background:onlyVis?"#22c55e10":"rgba(255,255,255,0.025)",border:`1px solid ${onlyVis?"#22c55e2E":"rgba(255,255,255,0.075)"}`,color:onlyVis?"#4ade80":"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}>
-                  {onlyVis?"● VISIBLES":"TODOS"}
-                </button>
+                <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+                  {/* alert button */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:8,background:alertsEnabled?"#22c55e0d":"rgba(255,255,255,0.025)",border:`1px solid ${alertsEnabled?"#22c55e2E":"rgba(255,255,255,0.075)"}`,transition:"all 0.3s"}}>
+                    <button onClick={requestAlerts} style={{fontSize:9,fontFamily:"'IBM Plex Mono',monospace",color:alertsEnabled?"#4ade80":alertPermission==="denied"?"#f87171":"#334155",letterSpacing:"0.1em",background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                      <span>{alertsEnabled?"🔔":"🔕"}</span>
+                      <span>{alertPermission==="denied"?"BLOQUEADO":alertsEnabled?"ALERTAS ON":"ALERTAS"}</span>
+                    </button>
+                    {alertsEnabled&&(
+                      <div style={{display:"flex",alignItems:"center",gap:4,borderLeft:"1px solid rgba(255,255,255,0.08)",paddingLeft:6}}>
+                        {[5,10,15,30].map(m=>(
+                          <button key={m} onClick={()=>setAlertMinutes(m)} style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",padding:"2px 6px",borderRadius:5,background:alertMinutes===m?"#22c55e18":"transparent",color:alertMinutes===m?"#4ade80":"#334155",border:`1px solid ${alertMinutes===m?"#22c55e30":"transparent"}`,cursor:"pointer",transition:"all 0.15s"}}>
+                            {m}m
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={()=>setOnlyVis(!onlyVis)} style={{padding:"6px 12px",borderRadius:8,background:onlyVis?"#22c55e10":"rgba(255,255,255,0.025)",border:`1px solid ${onlyVis?"#22c55e2E":"rgba(255,255,255,0.075)"}`,color:onlyVis?"#4ade80":"#334155",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}>
+                    {onlyVis?"● VISIBLES":"TODOS"}
+                  </button>
+                </div>
               </div>
               {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:12,display:"inline-block",animation:"orbSpin 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.14em"}}>Calculando pases reales...</div></div>}
               {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed #f43f5e2E",borderRadius:14,background:"#f43f5e06"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
