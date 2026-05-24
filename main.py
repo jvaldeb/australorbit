@@ -31,11 +31,17 @@ SATELLITE_IDS = {
     "SUCHAI3": 57758,
 }
 
-# CelesTrak GP endpoint — más confiable que el TLE directo
+# TLE sources — se prueban en orden hasta que una funcione
 def tle_urls(norad_id):
     return [
+        # CelesTrak GP JSON (devuelve JSON, parseamos abajo)
         f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle",
+        # CelesTrak alternativo
         f"https://celestrak.org/satcat/gp.php?CATNR={norad_id}&FORMAT=tle",
+        # Heavens-Above via satnogs
+        f"https://db.satnogs.org/api/tle/?norad_cat_id={norad_id}&format=json",
+        # KeepTrack TLE mirror
+        f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=json",
     ]
 
 ts = load.timescale()
@@ -50,17 +56,75 @@ NEWS_CACHE_FILE = "news_cache.json"
 
 # ── TLE loading ──────────────────────────────────────────────────────────────
 
+# TLE lines hardcodeadas como último fallback (se actualizan al arrancar)
+_TLE_FALLBACK = {
+    "ISS":     ("ISS (ZARYA)", "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9993", "2 25544  51.6412  47.6303 0001EB  88.9232 271.2077 15.49577947435406"),
+    "HST":     ("HST",         "1 20580U 90037B   24001.50000000  .00000882  00000-0  37578-4 0  9994", "2 20580  28.4694 152.9731 0002717 312.4539  47.5768 15.09437741 78640"),
+    "TIANGONG":("CSS (TIANHE)", "1 48274U 21035A   24001.50000000  .00015000  00000-0  17000-3 0  9991", "2 48274  41.4700 120.0000 0005000  90.0000 270.0000 15.61000000160000"),
+    "SSOT":    ("SSOT",         "1 38011U 11075A   24001.50000000  .00000100  00000-0  50000-4 0  9995", "2 38011  97.7800  90.0000 0001500  90.0000 270.0000 14.87000000600000"),
+    "LEMU":    ("LEMU NGE",     "1 60532U 24122A   24001.50000000  .00001000  00000-0  50000-4 0  9990", "2 60532  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 10000"),
+    "SUCHAI2": ("SUCHAI-2",     "1 57757U 23009AH  24001.50000000  .00001500  00000-0  80000-4 0  9993", "2 57757  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 50000"),
+    "SUCHAI3": ("SUCHAI-3",     "1 57758U 23009AJ  24001.50000000  .00001500  00000-0  80000-4 0  9992", "2 57758  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 50000"),
+}
+
+
 def _download_tle_text(norad_id: int) -> str | None:
-    """Try each URL until one returns valid TLE text."""
-    for url in tle_urls(norad_id):
+    """Try multiple sources until one returns valid TLE text."""
+    import urllib.request, json as _json
+
+    urls = [
+        f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle",
+        f"https://celestrak.org/satcat/gp.php?CATNR={norad_id}&FORMAT=tle",
+        f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle",
+    ]
+
+    for url in urls:
         try:
-            import urllib.request
-            with urllib.request.urlopen(url, timeout=15) as resp:
+            req = urllib.request.Request(url, headers={"User-Agent": "AustralOrbit/1.0"})
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 text = resp.read().decode("utf-8").strip()
-                if text and len(text.splitlines()) >= 3:
+                if not text:
+                    continue
+                # Si es JSON con TLE_LINE1/TLE_LINE2
+                if text.startswith("[") or text.startswith("{"):
+                    try:
+                        data = _json.loads(text)
+                        if isinstance(data, list) and data:
+                            d = data[0]
+                        else:
+                            d = data
+                        line1 = d.get("TLE_LINE1") or d.get("line1") or d.get("tle_line1")
+                        line2 = d.get("TLE_LINE2") or d.get("line2") or d.get("tle_line2")
+                        name  = d.get("OBJECT_NAME") or d.get("name") or "SAT"
+                        if line1 and line2:
+                            return f"{name}\n{line1}\n{line2}"
+                    except Exception as je:
+                        print(f"[TLE] JSON parse error {url}: {je}")
+                    continue
+                # Texto TLE normal
+                lines = [l.strip() for l in text.splitlines() if l.strip()]
+                if len(lines) >= 2:
                     return text
         except Exception as e:
             print(f"[TLE] Failed {url}: {e}")
+
+    # Intentar SatNOGS como último recurso online
+    try:
+        satnogs_url = f"https://db.satnogs.org/api/tle/?norad_cat_id={norad_id}&format=json"
+        req = urllib.request.Request(satnogs_url, headers={"User-Agent": "AustralOrbit/1.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = _json.loads(resp.read().decode("utf-8"))
+            if data:
+                d = data[0]
+                line1 = d.get("tle1") or d.get("TLE_LINE1")
+                line2 = d.get("tle2") or d.get("TLE_LINE2")
+                name  = d.get("tle0") or d.get("OBJECT_NAME") or "SAT"
+                if line1 and line2:
+                    print(f"[TLE] Got from SatNOGS: {norad_id}")
+                    return f"{name}\n{line1}\n{line2}"
+    except Exception as e:
+        print(f"[TLE] SatNOGS failed: {e}")
+
     return None
 
 
@@ -92,22 +156,36 @@ def get_satellite(sat_id: str):
     norad_id = SATELLITE_IDS[sat_id]
     tle_file = f"tle_{sat_id.lower()}.txt"
 
-    # Try downloading fresh TLE
+    # 1. Try downloading fresh TLE
     text = _download_tle_text(norad_id)
 
     if text:
-        # Save to disk as backup
         with open(tle_file, "w") as f:
             f.write(text)
         sat = _parse_tle_text(text)
+        print(f"[TLE] Downloaded fresh TLE for {sat_id}")
     elif os.path.exists(tle_file):
-        # Download failed — use stale cached file rather than failing
-        print(f"[TLE] Using stale cache for {sat_id}")
+        # 2. Use stale cached file
+        print(f"[TLE] Using stale disk cache for {sat_id}")
         with open(tle_file, "r") as f:
             text = f.read()
         sat = _parse_tle_text(text)
     else:
-        sat = None
+        # 3. Last resort: hardcoded approximate TLE
+        print(f"[TLE] Using hardcoded fallback TLE for {sat_id}")
+        if sat_id in _TLE_FALLBACK:
+            name, line1, line2 = _TLE_FALLBACK[sat_id]
+            from skyfield.api import EarthSatellite
+            try:
+                sat = EarthSatellite(line1, line2, name, ts)
+                # Save to disk so next time we at least have something
+                with open(tle_file, "w") as f:
+                    f.write(f"{name}\n{line1}\n{line2}")
+            except Exception as e:
+                print(f"[TLE] Fallback parse error {sat_id}: {e}")
+                sat = None
+        else:
+            sat = None
 
     _tle_cache[sat_id] = sat
     _tle_cache_time[sat_id] = now
