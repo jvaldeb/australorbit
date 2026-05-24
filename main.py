@@ -235,3 +235,52 @@ async def refresh_news():
         os.remove(NEWS_CACHE_FILE)
     articles = await get_news_cached()
     return {"status": "actualizado", "count": len(articles)}
+
+# ── Proxy NOAA space weather (evita CORS desde el browser) ──────────────────
+@app.get("/spaceweather/kp")
+async def kp_index():
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+            timeout=10
+        )
+        return r.json()
+
+@app.get("/spaceweather/wind")
+async def solar_wind():
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+            timeout=10
+        )
+        return r.json()
+
+@app.get("/spaceweather/alerts")
+async def space_alerts():
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://services.swpc.noaa.gov/products/alerts.json",
+            timeout=10
+        )
+        return r.json()
+
+# ── Proxy Launch Library 2 ───────────────────────────────────────────────────
+@app.get("/launches/upcoming")
+async def launches_upcoming():
+    async with httpx.AsyncClient() as client:
+        try:
+            r = await client.get(
+                "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed",
+                timeout=20,
+                headers={"User-Agent": "AustralOrbit/1.0"}
+            )
+            if r.status_code == 429:
+                raise Exception("rate limit")
+            return r.json()
+        except Exception:
+            r = await client.get(
+                "https://lldev.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&ordering=net&mode=detailed",
+                timeout=20
+            )
+            return r.json()
+ 
