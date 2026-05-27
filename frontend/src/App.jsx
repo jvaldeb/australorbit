@@ -397,6 +397,7 @@ function Globe({ sat, pos }) {
 }
 
 /* ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
@@ -562,6 +563,74 @@ function SkyDiagram({ pass, color }) {
 /* ─────────────────────────────────────────────
    PASS CARD
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   SHARE CARD — genera PNG con Canvas API
+───────────────────────────────────────────── */
+function generateShareCard({ pass, sat, city = "Chile" }) {
+  const W = 1080, H = 1080;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, W, H);
+  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.7);
+  grad.addColorStop(0, sat.color + "18");
+  grad.addColorStop(1, "transparent");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 90) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 90) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.fillStyle = sat.color;
+  ctx.fillRect(80, 80, 180, 3);
+  ctx.font = "600 28px Arial, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.fillText("AUSTRAL ORBIT · australorbit.com", 80, 140);
+  ctx.font = "300 32px Arial, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.fillText(city.toUpperCase(), 80, 195);
+  ctx.font = "800 110px Arial Black, sans-serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(sat.name, 80, 335);
+  ctx.font = "300 38px Arial, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillText("pasa sobre " + city + " en", 80, 405);
+  const diff = new Date(pass.rise) - new Date();
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const timeStr = h > 0 ? h + "h " + m + "m" : m + " min";
+  ctx.font = "800 200px Arial Black, sans-serif";
+  ctx.fillStyle = sat.color;
+  ctx.fillText(timeStr, 80, 630);
+  ctx.font = "500 52px Arial, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.fillText(fmtTime(pass.rise) + "h  ·  " + fmtDate(pass.rise), 80, 710);
+  const datos = [
+    ["ELEVACION", pass.max_el + "deg"],
+    ["DURACION",  Math.floor(pass.duration/60) + "m " + (pass.duration%60) + "s"],
+    ["VISIBILIDAD", pass.visible ? "A SIMPLE VISTA" : "BINOCULARES"],
+  ];
+  datos.forEach(([label, val], i) => {
+    const x = 80 + i * 330;
+    ctx.font = "400 24px Arial, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.fillText(label, x, 800);
+    ctx.font = "700 30px Arial, sans-serif";
+    ctx.fillStyle = i === 2 && pass.visible ? "#4ade80" : "rgba(255,255,255,0.75)";
+    ctx.fillText(val, x, 842);
+  });
+  ctx.fillStyle = sat.color + "35";
+  ctx.fillRect(80, 900, W - 160, 1);
+  ctx.font = "400 22px Arial, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.fillText("Datos en tiempo real · Skyfield + CelesTrak · " + new Date().getFullYear(), 80, 955);
+  const link = document.createElement("a");
+  link.download = "austral-orbit-" + sat.name.toLowerCase() + "-" + fmtDate(pass.rise).replace(/ /g,"-") + ".png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 function PassCard({ pass, sat, isNext }) {
   const [open, setOpen] = useState(false);
   const [cd, setCd]     = useState(null);
@@ -622,6 +691,25 @@ function PassCard({ pass, sat, isNext }) {
               <div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginBottom:5,textTransform:"uppercase"}}>Consejo de observación</div>
               <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares para mejor visibilidad.`}</div>
             </div>
+            {/* Boton compartir */}
+            <button
+              onClick={e => { e.stopPropagation(); generateShareCard({ pass, sat, city: "Chile" }); }}
+              style={{
+                marginTop:12, display:"flex", alignItems:"center", gap:8,
+                padding:"10px 20px", borderRadius:12,
+                background:sat.color+"12", border:`1px solid ${sat.color}40`,
+                color:sat.color, fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:11, letterSpacing:"0.12em",
+                cursor:"pointer", transition:"all 0.2s", width:"100%", justifyContent:"center",
+              }}
+              onMouseEnter={e=>e.currentTarget.style.background=sat.color+"22"}
+              onMouseLeave={e=>e.currentTarget.style.background=sat.color+"12"}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              COMPARTIR ESTE PASE
+            </button>
           </div>
         </div>
       )}
