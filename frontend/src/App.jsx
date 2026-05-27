@@ -162,99 +162,344 @@ function OrbitalPlanet({ sat, pos }) {
 }
 
 /* ─────────────────────────────────────────────
-   GLOBE
+   GLOBE 3D — Three.js con textura NASA
 ───────────────────────────────────────────── */
 function Globe({ sat, pos }) {
-  const W = 280, H = 280, R = 118, cx = 140, cy = 140, cLat = -20, cLon = -70;
-  function proj(lat, lon) {
-    const φ = d2r(lat), λ = d2r(lon), φ0 = d2r(cLat), λ0 = d2r(cLon);
-    const c = Math.sin(φ0)*Math.sin(φ) + Math.cos(φ0)*Math.cos(φ)*Math.cos(λ-λ0);
-    if (c < 0) return null;
-    return [cx + R*Math.cos(φ)*Math.sin(λ-λ0), cy - R*(Math.cos(φ0)*Math.sin(φ) - Math.sin(φ0)*Math.cos(φ)*Math.cos(λ-λ0))];
-  }
-  const sLat = pos?.lat ?? 0, sLon = pos?.lon ?? 0, alt = pos?.alt_km ?? 400;
-  const sXY = proj(sLat, sLon), sPt = proj(SANTIAGO.lat, SANTIAGO.lon);
-  const vr = visRadius(alt);
-  const vc = Array.from({length:60},(_,i)=>{
-    const a=(i/60)*2*Math.PI, vl=sLat+vr*Math.cos(a), vlo=sLon+(vr/Math.cos(d2r(sLat)))*Math.sin(a);
-    return proj(Math.max(-90,Math.min(90,vl)),((vlo+180)%360)-180);
-  }).filter(Boolean);
-  const grid=[];
-  for(let la=-80;la<=80;la+=20){const pts=[];for(let lo=-180;lo<=180;lo+=3){const xy=proj(la,lo);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
-  for(let lo=-180;lo<=180;lo+=20){const pts=[];for(let la=-90;la<=90;la+=3){const xy=proj(la,lo);if(xy)pts.push(xy);else if(pts.length>1){grid.push([...pts]);pts.length=0;}}if(pts.length>1)grid.push(pts);}
-  const sa=[[-17,-72],[-10,-62],[-3,-43],[-5,-35],[-12,-37],[-18,-40],[-23,-43],[-28,-49],[-33,-52],[-38,-58],[-42,-64],[-46,-65],[-52,-69],[-55,-68],[-55,-65],[-52,-73],[-48,-75],[-42,-73],[-35,-72],[-27,-70],[-18,-70],[-12,-77],[-3,-80],[5,-77],[10,-75],[12,-72],[-17,-72]];
-  const tp=pts=>pts.filter(Boolean).map((p,i)=>`${i===0?"M":"L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
-  const track=groundTrack(sLat,sLon,51.6,92);
-  const segs=[];let seg=[];
-  for(const pt of track){const xy=proj(pt.lat,pt.lon);if(!xy){if(seg.length>1)segs.push({pts:seg});seg=[];continue;}seg.push({xy,past:pt.past});}
-  if(seg.length>1)segs.push({pts:seg});
-  const gid=`gl${sat.id}`;
+  const mountRef = useRef(null);
+  const rendererRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const satMeshRef = useRef(null);
+  const Santiago = { lat: SANTIAGO.lat, lon: SANTIAGO.lon };
+
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el) return;
+    let animId, THREE;
+
+    function latLonToVec3(lat, lon, radius) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return [
+        -radius * Math.sin(phi) * Math.cos(theta),
+         radius * Math.cos(phi),
+         radius * Math.sin(phi) * Math.sin(theta),
+      ];
+    }
+
+    function init(T) {
+      THREE = T;
+      const W = el.clientWidth || 280;
+      const H = el.clientHeight || 280;
+
+      // Scene
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
+
+      // Camera
+      const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000);
+      camera.position.set(0, 0, 2.8);
+      cameraRef.current = camera;
+
+      // Renderer
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+      el.appendChild(renderer.domElement);
+      rendererRef.current = renderer;
+
+      // Textura Tierra NASA (Blue Marble)
+      const loader = new THREE.TextureLoader();
+      const earthTex = loader.load(
+        'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'
+      );
+      const bumpTex = loader.load(
+        'https://unpkg.com/three-globe/example/img/earth-topology.png'
+      );
+      const specTex = loader.load(
+        'https://unpkg.com/three-globe/example/img/earth-water.png'
+      );
+      const cloudTex = loader.load(
+        'https://unpkg.com/three-globe/example/img/earth-clouds.png'
+      );
+
+      // Esfera Tierra
+      const earthGeo = new THREE.SphereGeometry(1, 64, 64);
+      const earthMat = new THREE.MeshPhongMaterial({
+        map: earthTex,
+        bumpMap: bumpTex,
+        bumpScale: 0.04,
+        specularMap: specTex,
+        specular: new THREE.Color(0x222233),
+        shininess: 8,
+      });
+      const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+      scene.add(earthMesh);
+
+      // Nubes
+      const cloudGeo = new THREE.SphereGeometry(1.012, 64, 64);
+      const cloudMat = new THREE.MeshPhongMaterial({
+        map: cloudTex,
+        transparent: true,
+        opacity: 0.28,
+      });
+      const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+      scene.add(cloudMesh);
+
+      // Atmósfera (glow)
+      const atmosGeo = new THREE.SphereGeometry(1.08, 64, 64);
+      const atmosMat = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(sat.color),
+        transparent: true,
+        opacity: 0.06,
+        side: THREE.FrontSide,
+      });
+      scene.add(new THREE.Mesh(atmosGeo, atmosMat));
+
+      // Luz ambiental
+      scene.add(new THREE.AmbientLight(0x333355, 0.8));
+
+      // Luz solar (desde el lado iluminado)
+      const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
+      sunLight.position.set(5, 3, 5);
+      scene.add(sunLight);
+
+      // Punto de Santiago
+      const [sx, sy, sz] = latLonToVec3(Santiago.lat, Santiago.lon, 1.01);
+      const stGeo = new THREE.SphereGeometry(0.018, 12, 12);
+      const stMat = new THREE.MeshBasicMaterial({ color: 0xff4d6d });
+      const stMesh = new THREE.Mesh(stGeo, stMat);
+      stMesh.position.set(sx, sy, sz);
+      scene.add(stMesh);
+
+      // Punto del satélite
+      const satGeo = new THREE.SphereGeometry(0.022, 12, 12);
+      const satMat = new THREE.MeshBasicMaterial({ color: sat.color });
+      const satMesh = new THREE.Mesh(satGeo, satMat);
+      scene.add(satMesh);
+      satMeshRef.current = satMesh;
+
+      // Rotar Tierra hacia Latinoamérica al inicio
+      earthMesh.rotation.y = -Math.PI * 0.55;
+      cloudMesh.rotation.y = -Math.PI * 0.55;
+
+      // Animación
+      let t = 0;
+      function animate() {
+        animId = requestAnimationFrame(animate);
+        t += 0.001;
+        earthMesh.rotation.y += 0.0008;
+        cloudMesh.rotation.y += 0.0010;
+
+        // Actualizar posición del satélite
+        if (satMeshRef.current && pos?.lat !== undefined) {
+          const [ax, ay, az] = latLonToVec3(pos.lat, pos.lon, 1.08);
+          satMesh.position.set(ax, ay, az);
+        }
+
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    // Cargar Three.js desde CDN
+    if (window.THREE) {
+      init(window.THREE);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      script.onload = () => init(window.THREE);
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      cancelAnimationFrame(animId);
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+        if (el.contains(rendererRef.current.domElement)) {
+          el.removeChild(rendererRef.current.domElement);
+        }
+      }
+    };
+  }, [sat.color, sat.id]);
+
+  // Actualizar posición del satélite cuando cambia pos
+  useEffect(() => {
+    if (!satMeshRef.current || pos?.lat === undefined) return;
+    function latLonToVec3(lat, lon, radius) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return [
+        -radius * Math.sin(phi) * Math.cos(theta),
+         radius * Math.cos(phi),
+         radius * Math.sin(phi) * Math.sin(theta),
+      ];
+    }
+    const [ax, ay, az] = latLonToVec3(pos.lat, pos.lon, 1.08);
+    satMeshRef.current.position.set(ax, ay, az);
+  }, [pos]);
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",maxWidth:W}}>
-      <defs>
-        <radialGradient id={`gb${gid}`} cx="38%" cy="32%">
-          <stop offset="0%" stopColor="#0C1E38"/>
-          <stop offset="100%" stopColor="#030A14"/>
-        </radialGradient>
-        <radialGradient id={`ga${gid}`} cx="50%" cy="50%">
-          <stop offset="80%" stopColor="transparent"/>
-          <stop offset="100%" stopColor={sat.color+"22"}/>
-        </radialGradient>
-        <clipPath id={`gc${gid}`}><circle cx={cx} cy={cy} r={R}/></clipPath>
-        <filter id={`gg${gid}`}><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <circle cx={cx} cy={cy} r={R+14} fill={`url(#ga${gid})`}/>
-      <circle cx={cx} cy={cy} r={R} fill={`url(#gb${gid})`} stroke={sat.color+"22"} strokeWidth="1"/>
-      <g clipPath={`url(#gc${gid})`}>
-        {grid.map((pts,i)=><polyline key={i} points={pts.map(p=>p.join(",")).join(" ")} fill="none" stroke="#0C2040" strokeWidth="0.5" opacity="0.9"/>)}
-        <path d={tp(sa.map(([la,lo])=>proj(la,lo)))} fill="#091C34" stroke="#183660" strokeWidth="1"/>
-        {vc.length>3&&<polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"0D"} stroke={sat.color+"35"} strokeWidth="1" strokeDasharray="4 4"/>}
-        {segs.map((s,i)=><polyline key={i} points={s.pts.map(p=>p.xy.join(",")).join(" ")} fill="none" stroke={sat.color} strokeWidth="1.6" opacity="0.85"/>)}
-        {sPt&&<><circle cx={sPt[0]} cy={sPt[1]} r="7" fill="none" stroke="#ff4d6d" strokeWidth="0.8" opacity="0.3"/><circle cx={sPt[0]} cy={sPt[1]} r="2.5" fill="#ff4d6d"/><text x={sPt[0]+6} y={sPt[1]-4} fontSize="7" fill="#ff4d6d" fontFamily="'IBM Plex Mono',monospace">Santiago</text></>}
-        {sXY&&<><circle cx={sXY[0]} cy={sXY[1]} r="18" fill={sat.color+"0A"}/><circle cx={sXY[0]} cy={sXY[1]} r="7" fill={sat.color} filter={`url(#gg${gid})`}/><circle cx={sXY[0]} cy={sXY[1]} r="12" fill="none" stroke={sat.color} strokeWidth="1" opacity="0.38"/><text x={sXY[0]+12} y={sXY[1]-8} fontSize="7.5" fill={sat.color} fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{sat.name}</text></>}
-      </g>
-      <circle cx={cx} cy={cy} r={R} fill="none" stroke={sat.color+"22"} strokeWidth="1"/>
-    </svg>
+    <div ref={mountRef} style={{
+      width: "100%",
+      height: 280,
+      borderRadius: 16,
+      overflow: "hidden",
+      background: "radial-gradient(ellipse at 40% 35%, #0C1E38 0%, #030A14 100%)",
+      position: "relative",
+    }}>
+      {/* Label satélite */}
+      {pos && (
+        <div style={{
+          position: "absolute", bottom: 10, left: 12, zIndex: 2,
+          fontFamily: "'IBM Plex Mono', monospace", fontSize: 8.5,
+          color: sat.color, letterSpacing: "0.14em", textTransform: "uppercase",
+          background: "rgba(0,0,0,0.5)", padding: "4px 8px", borderRadius: 6,
+          border: `1px solid ${sat.color}30`,
+        }}>
+          ● {sat.name} · {pos.lat?.toFixed(1)}°{pos.lat >= 0 ? "N" : "S"} {Math.abs(pos.lon)?.toFixed(1)}°{pos.lon >= 0 ? "E" : "O"}
+        </div>
+      )}
+    </div>
   );
 }
 
 /* ─────────────────────────────────────────────
-   CHILE MAP
+   CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
-  const W=240,H=370,latMin=-56,latMax=-17,lonMin=-76,lonMax=-64;
-  const proj=(la,lo)=>[((lo-lonMin)/(lonMax-lonMin))*(W-40)+20,((latMax-la)/(latMax-latMin))*(H-40)+20];
-  const sLat=pos?.lat??0,sLon=pos?.lon??0,alt=pos?.alt_km??400;
-  const sXY=proj(sLat,sLon),stXY=proj(SANTIAGO.lat,SANTIAGO.lon);
-  const inView=pos?.visible_from_santiago??false;
-  const vr=visRadius(alt);
-  const vc=Array.from({length:72},(_,i)=>{const a=(i/72)*2*Math.PI;return proj(sLat+vr*Math.cos(a),sLon+(vr/Math.cos(d2r(sLat)))*Math.sin(a));});
-  const chile=[[-17.5,-70],[-18,-70.3],[-20,-70.1],[-22,-70.1],[-24,-70.6],[-26,-70.8],[-28,-71.3],[-30,-71.5],[-32,-71.7],[-33.4,-71.8],[-35,-72],[-37,-73.5],[-38,-73.5],[-40,-73.5],[-42,-73.5],[-44,-75],[-46,-75],[-48,-75.5],[-50,-75],[-52,-74],[-53,-70.9],[-54,-69],[-55,-68],[-55,-65],[-53,-63],[-51,-59],[-49,-57],[-47,-65],[-44,-66],[-41,-62],[-38,-58],[-36,-57],[-33,-52],[-30,-51],[-27,-50],[-24,-67],[-22,-68],[-20,-70],[-17.5,-70]];
-  const cities=[{name:"Santiago",lat:-33.45,lon:-70.67,main:true},{name:"Valparaíso",lat:-33.05,lon:-71.6},{name:"Concepción",lat:-36.82,lon:-73.05},{name:"Antofagasta",lat:-23.65,lon:-70.4},{name:"Pto. Montt",lat:-41.47,lon:-72.94}];
-  const trk=groundTrack(sLat,sLon,97,95,120,0.3).filter(p=>p.lat>=latMin-5&&p.lat<=latMax+5&&p.lon>=lonMin-3&&p.lon<=lonMax+3);
-  const gid=`cm${sat.id}`;
+  const mapRef = useRef(null);
+  const leafletRef = useRef(null);
+  const satMarkerRef = useRef(null);
+  const circleRef = useRef(null);
+
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+
+    function initMap(L) {
+      if (leafletRef.current) return;
+
+      // Inyectar CSS de Leaflet si no está
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+        document.head.appendChild(link);
+      }
+
+      const map = L.map(el, {
+        center: [-33.4, -65],
+        zoom: 3,
+        zoomControl: false,
+        attributionControl: false,
+        dragging: true,
+        scrollWheelZoom: false,
+      });
+
+      // Tiles satelitales Esri (sin API key, gratis)
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19 }
+      ).addTo(map);
+
+      // Overlay de labels (nombres de países/ciudades)
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, opacity: 0.6 }
+      ).addTo(map);
+
+      // Marcador Santiago
+      const stIcon = L.divIcon({
+        html: `<div style="width:10px;height:10px;border-radius:50%;background:#ff4d6d;border:2px solid rgba(255,77,109,0.4);box-shadow:0 0 8px #ff4d6d;"></div>`,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
+        className: '',
+      });
+      L.marker([-33.45, -70.67], { icon: stIcon })
+        .addTo(map)
+        .bindTooltip('Santiago', { permanent: false, direction: 'right', className: 'sat-tooltip' });
+
+      // Marcador satélite
+      const satIcon = L.divIcon({
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${sat.color};border:2px solid rgba(255,255,255,0.3);box-shadow:0 0 12px ${sat.color};"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        className: '',
+      });
+
+      const initLat = pos?.lat ?? -20;
+      const initLon = pos?.lon ?? -60;
+      const marker = L.marker([initLat, initLon], { icon: satIcon }).addTo(map);
+      satMarkerRef.current = marker;
+
+      // Círculo de visibilidad
+      const vr = visRadius(pos?.alt_km ?? 400) * 111000;
+      const circle = L.circle([initLat, initLon], {
+        radius: vr,
+        color: sat.color,
+        fillColor: sat.color,
+        fillOpacity: 0.06,
+        weight: 1.2,
+        dashArray: '5 5',
+      }).addTo(map);
+      circleRef.current = circle;
+
+      leafletRef.current = map;
+    }
+
+    if (window.L) {
+      initMap(window.L);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      script.onload = () => initMap(window.L);
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+        satMarkerRef.current = null;
+        circleRef.current = null;
+      }
+    };
+  }, [sat.id, sat.color]);
+
+  // Actualizar posición del satélite en tiempo real
+  useEffect(() => {
+    if (!satMarkerRef.current || pos?.lat === undefined) return;
+    const latlng = [pos.lat, pos.lon];
+    satMarkerRef.current.setLatLng(latlng);
+    if (circleRef.current) {
+      circleRef.current.setLatLng(latlng);
+      circleRef.current.setRadius(visRadius(pos.alt_km ?? 400) * 111000);
+    }
+  }, [pos]);
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",maxWidth:W}}>
-      <defs>
-        <radialGradient id={`cb${gid}`}><stop offset="0%" stopColor="#091828"/><stop offset="100%" stopColor="#030810"/></radialGradient>
-        <filter id={`cs${gid}`}><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <clipPath id={`cc${gid}`}><rect width={W} height={H}/></clipPath>
-      </defs>
-      <rect width={W} height={H} rx="10" fill={`url(#cb${gid})`}/>
-      <g clipPath={`url(#cc${gid})`}>
-        {[-70,-65,-60,-55,-50,-45,-40,-35,-30,-25,-20].map(la=>{const[,y]=proj(la,lonMin);return y>=0&&y<=H?<line key={la} x1="0" y1={y} x2={W} y2={y} stroke="#0C2040" strokeWidth="0.5" strokeDasharray="3 6"/>:null;})}
-        {[-75,-70,-65].map(lo=>{const[x]=proj(latMin,lo);return x>=0&&x<=W?<line key={lo} x1={x} y1="0" x2={x} y2={H} stroke="#0C2040" strokeWidth="0.5" strokeDasharray="3 6"/>:null;})}
-        <polygon points={chile.map(([la,lo])=>proj(la,lo).join(",")).join(" ")} fill="#091C34" stroke="#183660" strokeWidth="1.2"/>
-        <polygon points={vc.map(p=>p.join(",")).join(" ")} fill={sat.color+"10"} stroke={sat.color+"48"} strokeWidth="1.4" strokeDasharray="5 4"/>
-        {inView&&<line x1={sXY[0]} y1={sXY[1]} x2={stXY[0]} y2={stXY[1]} stroke={sat.color} strokeWidth="1" strokeDasharray="4 4" opacity="0.5"/>}
-        {trk.length>1&&trk.map((pt,i)=>{if(!i)return null;const pv=trk[i-1],a=proj(pv.lat,pv.lon),b=proj(pt.lat,pt.lon);return<line key={i} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={sat.color} strokeWidth={pt.past?1:1.8} opacity={pt.past?0.15:0.8}/>;},)}
-        {cities.map(c=>{const[cx2,cy2]=proj(c.lat,c.lon);if(cx2<-5||cx2>W+5||cy2<-5||cy2>H+5)return null;return<g key={c.name}><circle cx={cx2} cy={cy2} r={c.main?3.5:2.2} fill={c.main?"#ff4d6d":"#2D5070"}/>{c.main&&<circle cx={cx2} cy={cy2} r="8" fill="none" stroke="#ff4d6d" strokeWidth="0.7" opacity="0.3"/>}<text x={cx2+7} y={cy2+4} fontSize={c.main?8:7} fill={c.main?"#ff4d6d":"#2D5070"} fontFamily="'IBM Plex Mono',monospace">{c.name}</text></g>;})}
-        {sXY[0]>-30&&sXY[0]<W+30&&sXY[1]>-30&&sXY[1]<H+30&&<><circle cx={sXY[0]} cy={sXY[1]} r="18" fill={sat.color+"0D"}/><circle cx={sXY[0]} cy={sXY[1]} r="8" fill={sat.color} filter={`url(#cs${gid})`}/><circle cx={sXY[0]} cy={sXY[1]} r="13" fill="none" stroke={sat.color} strokeWidth="1" opacity="0.35"/><text x={sXY[0]+14} y={sXY[1]-10} fontSize="7.5" fill={sat.color} fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{sat.name}</text></>}
-      </g>
-      <text x="10" y="20" fontSize="7" fill={inView?sat.color:"#2D5070"} fontFamily="'IBM Plex Mono',monospace" letterSpacing="0.1em">
-        {inView?"✓ EN RANGO DE SANTIAGO":"○ FUERA DE RANGO"}
-      </text>
-    </svg>
+    <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", width: "100%", height: 370 }}>
+      <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+      {/* Badge encima del mapa */}
+      <div style={{
+        position: "absolute", top: 10, left: 10, zIndex: 1000,
+        fontFamily: "'IBM Plex Mono', monospace", fontSize: 8,
+        color: pos?.visible_from_santiago ? sat.color : "rgba(255,255,255,0.3)",
+        letterSpacing: "0.14em", textTransform: "uppercase",
+        background: "rgba(0,0,0,0.65)", padding: "4px 10px",
+        borderRadius: 6, border: `1px solid ${pos?.visible_from_santiago ? sat.color + "50" : "rgba(255,255,255,0.1)"}`,
+        backdropFilter: "blur(8px)",
+      }}>
+        {pos?.visible_from_santiago ? "✓ EN RANGO DE SANTIAGO" : "○ FUERA DE RANGO"}
+      </div>
+      <style>{`
+        .sat-tooltip { background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+        .leaflet-container { background: #030A14 !important; }
+      `}</style>
+    </div>
   );
 }
 
@@ -402,27 +647,8 @@ export default function App() {
   const [alertPermission, setAlertPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
   const [activeSection, setActiveSection]   = useState("passes"); // "passes" | "news"
   const alertTimers = useRef([]);
-  const [userCity, setUserCity]             = useState("tu ciudad");
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
-
-  // Geolocalización: detecta la ciudad del usuario al cargar
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`)
-          .then(r => r.json())
-          .then(d => {
-            const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad";
-            setUserCity(city);
-          })
-          .catch(() => {});
-      },
-      () => {}
-    );
-  }, []);
-
 
   const scheduleAlerts = useCallback((passList, sat, minutes) => {
     alertTimers.current.forEach(t => clearTimeout(t));
@@ -777,42 +1003,22 @@ export default function App() {
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:24}}>
-                Pases calculados en tiempo real sobre {userCity}. Satélites locales, estaciones espaciales internacionales y más.
+              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
+                Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
               </p>
 
-              {/* ── COUNTDOWN al próximo pase ── */}
-              {next ? (
-                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%",marginBottom:8}}>
-                  {/* Bloque ciudad + hora */}
+              {/* Next pass — full card desktop, compact strip mobile */}
+              {next && (
+                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%"}}>
                   <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>
-                      {sat.name} pasa sobre {userCity}
-                    </div>
-                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>
-                      {fmtTime(next.rise)}
-                    </div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>
-                      {fmtDate(next.rise)} · {next.visible ? "👁 visible a simple vista" : "con binoculares"}
-                    </div>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
+                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · Chile</div>
                   </div>
-                  {/* Bloque countdown */}
-                  <div style={{padding:"14px 20px",minWidth:130}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>
-                      en
-                    </div>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.04em",fontVariantNumeric:"tabular-nums"}}>
-                      {countdown(next.rise) || "—"}
-                    </div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>
-                      Máx {next.max_el}° elevación
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{display:"inline-flex",alignItems:"center",gap:12,padding:"14px 20px",borderRadius:16,...glass({}),marginBottom:8}}>
-                  <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:"rgba(255,255,255,0.3)"}}>
-                    Calculando próximo pase sobre {userCity}...
+                  <div style={{padding:"14px 20px"}}>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
                   </div>
                 </div>
               )}
