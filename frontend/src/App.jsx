@@ -167,24 +167,44 @@ function OrbitalPlanet({ sat, pos }) {
 function Globe({ sat, pos }) {
   const mountRef = useRef(null);
   const rendererRef = useRef(null);
+  const satGroupRef = useRef(null);
+  const lineRef = useRef(null);
+  const orbitLineRef = useRef(null);
   const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const satMeshRef = useRef(null);
-  const Santiago = { lat: SANTIAGO.lat, lon: SANTIAGO.lon };
+  const posRef = useRef(pos);
+
+  useEffect(() => { posRef.current = pos; }, [pos]);
 
   useEffect(() => {
     const el = mountRef.current;
     if (!el) return;
-    let animId, THREE;
+    let animId, THREE, pulseT = 0;
 
     function latLonToVec3(lat, lon, radius) {
       const phi = (90 - lat) * (Math.PI / 180);
       const theta = (lon + 180) * (Math.PI / 180);
-      return [
+      return new THREE.Vector3(
         -radius * Math.sin(phi) * Math.cos(theta),
          radius * Math.cos(phi),
          radius * Math.sin(phi) * Math.sin(theta),
-      ];
+      );
+    }
+
+    function buildOrbitLine(scene, lat, lon, incDeg, THREE) {
+      const pts = [];
+      for (let i = 0; i <= 120; i++) {
+        const frac = i / 120;
+        const dLon = lon + (frac - 0.5) * 200;
+        const dLat = lat + Math.sin(frac * Math.PI * 2) * incDeg * 0.18;
+        pts.push(latLonToVec3(
+          Math.max(-90, Math.min(90, dLat)),
+          ((dLon + 180) % 360) - 180,
+          1.02
+        ));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: sat.color, transparent: true, opacity: 0.35 });
+      return new THREE.Line(geo, mat);
     }
 
     function init(T) {
@@ -192,16 +212,12 @@ function Globe({ sat, pos }) {
       const W = el.clientWidth || 280;
       const H = el.clientHeight || 280;
 
-      // Scene
       const scene = new THREE.Scene();
       sceneRef.current = scene;
 
-      // Camera
-      const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000);
-      camera.position.set(0, 0, 2.8);
-      cameraRef.current = camera;
+      const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 1000);
+      camera.position.set(0, 0, 2.7);
 
-      // Renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(W, H);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -209,93 +225,124 @@ function Globe({ sat, pos }) {
       el.appendChild(renderer.domElement);
       rendererRef.current = renderer;
 
-      // Textura Tierra NASA (Blue Marble)
       const loader = new THREE.TextureLoader();
-      const earthTex = loader.load(
-        'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'
-      );
-      const bumpTex = loader.load(
-        'https://unpkg.com/three-globe/example/img/earth-topology.png'
-      );
-      const specTex = loader.load(
-        'https://unpkg.com/three-globe/example/img/earth-water.png'
-      );
-      const cloudTex = loader.load(
-        'https://unpkg.com/three-globe/example/img/earth-clouds.png'
-      );
+      const earthTex  = loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
+      const bumpTex   = loader.load('https://unpkg.com/three-globe/example/img/earth-topology.png');
+      const specTex   = loader.load('https://unpkg.com/three-globe/example/img/earth-water.png');
+      const cloudTex  = loader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png');
 
-      // Esfera Tierra
-      const earthGeo = new THREE.SphereGeometry(1, 64, 64);
-      const earthMat = new THREE.MeshPhongMaterial({
-        map: earthTex,
-        bumpMap: bumpTex,
-        bumpScale: 0.04,
-        specularMap: specTex,
-        specular: new THREE.Color(0x222233),
-        shininess: 8,
-      });
-      const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+      const earthMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 64, 64),
+        new THREE.MeshPhongMaterial({ map: earthTex, bumpMap: bumpTex, bumpScale: 0.04, specularMap: specTex, specular: new THREE.Color(0x222233), shininess: 8 })
+      );
+      earthMesh.rotation.y = -Math.PI * 0.55;
       scene.add(earthMesh);
 
-      // Nubes
-      const cloudGeo = new THREE.SphereGeometry(1.012, 64, 64);
-      const cloudMat = new THREE.MeshPhongMaterial({
-        map: cloudTex,
-        transparent: true,
-        opacity: 0.28,
-      });
-      const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+      const cloudMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(1.012, 64, 64),
+        new THREE.MeshPhongMaterial({ map: cloudTex, transparent: true, opacity: 0.28 })
+      );
+      cloudMesh.rotation.y = -Math.PI * 0.55;
       scene.add(cloudMesh);
 
-      // Atmósfera (glow)
-      const atmosGeo = new THREE.SphereGeometry(1.08, 64, 64);
-      const atmosMat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(sat.color),
-        transparent: true,
-        opacity: 0.06,
-        side: THREE.FrontSide,
-      });
-      scene.add(new THREE.Mesh(atmosGeo, atmosMat));
+      // Atmósfera glow
+      scene.add(new THREE.Mesh(
+        new THREE.SphereGeometry(1.09, 64, 64),
+        new THREE.MeshPhongMaterial({ color: new THREE.Color(sat.color), transparent: true, opacity: 0.055, side: THREE.FrontSide })
+      ));
 
-      // Luz ambiental
-      scene.add(new THREE.AmbientLight(0x333355, 0.8));
+      scene.add(new THREE.AmbientLight(0x334466, 0.9));
+      const sun = new THREE.DirectionalLight(0xfff5e0, 1.5);
+      sun.position.set(5, 3, 5);
+      scene.add(sun);
 
-      // Luz solar (desde el lado iluminado)
-      const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
-      sunLight.position.set(5, 3, 5);
-      scene.add(sunLight);
-
-      // Punto de Santiago
-      const [sx, sy, sz] = latLonToVec3(Santiago.lat, Santiago.lon, 1.01);
-      const stGeo = new THREE.SphereGeometry(0.018, 12, 12);
-      const stMat = new THREE.MeshBasicMaterial({ color: 0xff4d6d });
-      const stMesh = new THREE.Mesh(stGeo, stMat);
-      stMesh.position.set(sx, sy, sz);
+      // Santiago
+      const stPos = latLonToVec3(SANTIAGO.lat, SANTIAGO.lon, 1.015);
+      const stMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.016, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xff4d6d })
+      );
+      stMesh.position.copy(stPos);
       scene.add(stMesh);
+      // Anillo alrededor de Santiago
+      const stRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.026, 0.032, 32),
+        new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+      );
+      stRing.position.copy(stPos);
+      stRing.lookAt(0, 0, 0);
+      scene.add(stRing);
 
-      // Punto del satélite
-      const satGeo = new THREE.SphereGeometry(0.022, 12, 12);
-      const satMat = new THREE.MeshBasicMaterial({ color: sat.color });
-      const satMesh = new THREE.Mesh(satGeo, satMat);
-      scene.add(satMesh);
-      satMeshRef.current = satMesh;
+      // ── Grupo satélite (núcleo + halo pulsante + línea nadir) ──
+      const satGroup = new THREE.Group();
+      scene.add(satGroup);
+      satGroupRef.current = satGroup;
 
-      // Rotar Tierra hacia Latinoamérica al inicio
-      earthMesh.rotation.y = -Math.PI * 0.55;
-      cloudMesh.rotation.y = -Math.PI * 0.55;
+      // Núcleo principal — más grande y brillante
+      const satCore = new THREE.Mesh(
+        new THREE.SphereGeometry(0.036, 16, 16),
+        new THREE.MeshBasicMaterial({ color: sat.color })
+      );
+      satGroup.add(satCore);
 
-      // Animación
-      let t = 0;
+      // Halo pulsante exterior
+      const satHalo = new THREE.Mesh(
+        new THREE.SphereGeometry(0.058, 16, 16),
+        new THREE.MeshBasicMaterial({ color: sat.color, transparent: true, opacity: 0.25 })
+      );
+      satGroup.add(satHalo);
+      satGroup._halo = satHalo;
+
+      // Segundo halo más grande (más tenue)
+      const satHalo2 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.082, 16, 16),
+        new THREE.MeshBasicMaterial({ color: sat.color, transparent: true, opacity: 0.10 })
+      );
+      satGroup.add(satHalo2);
+      satGroup._halo2 = satHalo2;
+
+      // Línea nadir (satélite → superficie)
+      const lineMat = new THREE.LineBasicMaterial({ color: sat.color, transparent: true, opacity: 0.5 });
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+      const nadirLine = new THREE.Line(lineGeo, lineMat);
+      scene.add(nadirLine);
+      lineRef.current = nadirLine;
+
+      // Órbita
+      const orbitLine = buildOrbitLine(scene, pos?.lat ?? 0, pos?.lon ?? 0, 51.6, THREE);
+      scene.add(orbitLine);
+      orbitLineRef.current = orbitLine;
+
+      // Posición inicial
+      const initLat = pos?.lat ?? 0;
+      const initLon = pos?.lon ?? 0;
+      const initAlt = pos?.alt_km ?? 400;
+      const altScale = 1 + (initAlt / 6371);
+      const satVec = latLonToVec3(initLat, initLon, altScale);
+      satGroup.position.copy(satVec);
+      const surfVec = latLonToVec3(initLat, initLon, 1.01);
+      nadirLine.geometry.setFromPoints([satVec, surfVec]);
+
       function animate() {
         animId = requestAnimationFrame(animate);
-        t += 0.001;
-        earthMesh.rotation.y += 0.0008;
-        cloudMesh.rotation.y += 0.0010;
+        pulseT += 0.04;
 
-        // Actualizar posición del satélite
-        if (satMeshRef.current && pos?.lat !== undefined) {
-          const [ax, ay, az] = latLonToVec3(pos.lat, pos.lon, 1.08);
-          satMesh.position.set(ax, ay, az);
+        earthMesh.rotation.y += 0.0007;
+        cloudMesh.rotation.y += 0.0009;
+
+        // Pulso del halo
+        const pulse = 0.7 + 0.3 * Math.sin(pulseT);
+        if (satGroup._halo) satGroup._halo.material.opacity = 0.18 * pulse;
+        if (satGroup._halo2) satGroup._halo2.material.opacity = 0.08 * pulse;
+
+        // Actualizar posición desde posRef (sin re-mount)
+        const p = posRef.current;
+        if (p?.lat !== undefined && satGroupRef.current) {
+          const altS = 1 + ((p.alt_km ?? 400) / 6371);
+          const sv = latLonToVec3(p.lat, p.lon, altS);
+          satGroupRef.current.position.copy(sv);
+          const sfv = latLonToVec3(p.lat, p.lon, 1.01);
+          if (lineRef.current) lineRef.current.geometry.setFromPoints([sv, sfv]);
         }
 
         renderer.render(scene, camera);
@@ -303,7 +350,6 @@ function Globe({ sat, pos }) {
       animate();
     }
 
-    // Cargar Three.js desde CDN
     if (window.THREE) {
       init(window.THREE);
     } else {
@@ -317,28 +363,11 @@ function Globe({ sat, pos }) {
       cancelAnimationFrame(animId);
       if (rendererRef.current) {
         rendererRef.current.dispose();
-        if (el.contains(rendererRef.current.domElement)) {
-          el.removeChild(rendererRef.current.domElement);
-        }
+        const canvas = rendererRef.current.domElement;
+        if (el.contains(canvas)) el.removeChild(canvas);
       }
     };
   }, [sat.color, sat.id]);
-
-  // Actualizar posición del satélite cuando cambia pos
-  useEffect(() => {
-    if (!satMeshRef.current || pos?.lat === undefined) return;
-    function latLonToVec3(lat, lon, radius) {
-      const phi = (90 - lat) * (Math.PI / 180);
-      const theta = (lon + 180) * (Math.PI / 180);
-      return [
-        -radius * Math.sin(phi) * Math.cos(theta),
-         radius * Math.cos(phi),
-         radius * Math.sin(phi) * Math.sin(theta),
-      ];
-    }
-    const [ax, ay, az] = latLonToVec3(pos.lat, pos.lon, 1.08);
-    satMeshRef.current.position.set(ax, ay, az);
-  }, [pos]);
 
   return (
     <div ref={mountRef} style={{
