@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { usePageMeta } from "./usePageMeta.js";
 
+const API = "https://australorbit-production.up.railway.app";
+const pad = n => String(n).padStart(2, "0");
+
 function CosmicBg() {
   return (
     <div style={{position:"fixed",inset:0,zIndex:0,overflow:"hidden",pointerEvents:"none"}}>

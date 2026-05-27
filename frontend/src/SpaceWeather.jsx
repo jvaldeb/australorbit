@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { usePageMeta } from "./usePageMeta.js";
 
+const pad = n => String(n).padStart(2, "0");
+
 function CosmicBg({ kp }) {
   const aurora = kp >= 5;
   const color  = aurora ? "#6EE7B7" : "#57C7FF";
