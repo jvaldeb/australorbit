@@ -398,6 +398,7 @@ function Globe({ sat, pos }) {
 
 /* ─────────────────────────────────────────────
 /* ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
@@ -944,6 +945,216 @@ function ObservationSidebar({ sat, next, userLat = -33.4489, userLon = -70.6693 
   );
 }
 
+
+/* ─────────────────────────────────────────────
+   NIGHT MODE — pantalla completa para observar
+   + tarjeta post-pase automática
+───────────────────────────────────────────── */
+function NightMode({ pass, sat, onClose }) {
+  const [phase, setPhase]       = useState("waiting"); // waiting | passing | done
+  const [cd, setCd]             = useState("");
+  const [elapsed, setElapsed]   = useState(0);
+  const [heading, setHeading]   = useState(null);
+  const [headErr, setHeadErr]   = useState(false);
+  const watchRef                = useRef(null);
+
+  // Brujula
+  useEffect(() => {
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then(p => { if (p !== "granted") setHeadErr(true); })
+        .catch(() => setHeadErr(true));
+    }
+    function onOrientation(e) {
+      const h = e.webkitCompassHeading ?? (e.alpha != null ? (360 - e.alpha) : null);
+      if (h != null) setHeading(Math.round(h));
+    }
+    window.addEventListener("deviceorientation", onOrientation, true);
+    return () => window.removeEventListener("deviceorientation", onOrientation, true);
+  }, []);
+
+  // Timer principal
+  useEffect(() => {
+    const t = setInterval(() => {
+      const riseMs = new Date(pass.rise).getTime();
+      const setMs  = new Date(pass.set).getTime();
+      const nowMs  = Date.now();
+      const diff   = riseMs - nowMs;
+
+      if (nowMs >= setMs) {
+        setPhase("done");
+        clearInterval(t);
+        return;
+      }
+      if (nowMs >= riseMs) {
+        setPhase("passing");
+        setElapsed(Math.floor((nowMs - riseMs) / 1000));
+        setCd("");
+        return;
+      }
+      setPhase("waiting");
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCd(`${pad(h)}:${pad(m)}:${pad(s)}`);
+    }, 500);
+    return () => clearInterval(t);
+  }, [pass]);
+
+  // Dirección del pase respecto a la brújula
+  const riseAz  = pass.rise_az;
+  const relAngle = heading != null ? ((riseAz - heading + 360) % 360) : null;
+  const dirLabel = azLabel(riseAz);
+
+  const satColor = sat.color;
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, zIndex:500,
+      background:"#000000",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      padding:24,
+    }}>
+      {/* Cerrar */}
+      <button onClick={onClose} style={{
+        position:"absolute", top:20, right:20,
+        background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)",
+        color:"rgba(255,255,255,0.4)", borderRadius:10, padding:"8px 14px",
+        fontFamily:"'IBM Plex Mono',monospace", fontSize:11, cursor:"pointer",
+      }}>✕ SALIR</button>
+
+      {/* FASE: esperando */}
+      {phase === "waiting" && (
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:"0.2em",color:"rgba(255,255,255,0.3)",marginBottom:16}}>
+            {sat.name} PASA EN
+          </div>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:"clamp(64px,18vw,120px)",fontWeight:700,color:satColor,letterSpacing:"0.04em",lineHeight:1}}>
+            {cd}
+          </div>
+          <div style={{marginTop:32,fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em"}}>
+            MIRA HACIA EL
+          </div>
+          <div style={{fontSize:"clamp(48px,12vw,80px)",fontWeight:800,color:"#fff",fontFamily:"'Syne',sans-serif",marginTop:4}}>
+            {dirLabel}
+          </div>
+
+          {/* Brújula visual */}
+          <div style={{marginTop:32,position:"relative",width:160,height:160,margin:"32px auto 0"}}>
+            <svg viewBox="0 0 160 160" style={{width:160,height:160}}>
+              {/* Círculo base */}
+              <circle cx="80" cy="80" r="72" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+              {/* Puntos cardinales */}
+              {[["N",80,16],["S",80,150],["E",150,84],["O",12,84]].map(([l,x,y])=>(
+                <text key={l} x={x} y={y} textAnchor="middle" fontSize="12"
+                  fill={l==="N"?"#ff4d6d":"rgba(255,255,255,0.3)"}
+                  fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{l}</text>
+              ))}
+              {/* Flecha brújula (si hay heading) */}
+              {relAngle != null && (
+                <g transform={`rotate(${relAngle} 80 80)`}>
+                  <polygon points="80,20 86,80 80,90 74,80" fill={satColor} opacity="0.9"/>
+                  <polygon points="80,140 86,80 80,90 74,80" fill="rgba(255,255,255,0.2)"/>
+                </g>
+              )}
+              {/* Punto centro */}
+              <circle cx="80" cy="80" r="4" fill="rgba(255,255,255,0.5)"/>
+              {/* Si no hay brújula, mostrar dirección estática */}
+              {relAngle == null && (
+                <text x="80" y="88" textAnchor="middle" fontSize="28"
+                  fill={satColor} fontFamily="'Syne',sans-serif" fontWeight="800">
+                  {dirLabel}
+                </text>
+              )}
+            </svg>
+            {headErr && (
+              <div style={{position:"absolute",bottom:-24,left:0,right:0,textAlign:"center",
+                fontSize:9,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace"}}>
+                brújula no disponible
+              </div>
+            )}
+          </div>
+
+          {/* Info extra */}
+          <div style={{marginTop:48,display:"flex",gap:32,justifyContent:"center"}}>
+            {[["ELEVACIÓN",pass.max_el+"°"],["DURACIÓN",Math.floor(pass.duration/60)+"m "+pass.duration%60+"s"],["VISIBLE",pass.visible?"SÍ":"NO"]].map(([l,v])=>(
+              <div key={l} style={{textAlign:"center"}}>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:"0.15em",marginBottom:4}}>{l}</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:18,color:"rgba(255,255,255,0.7)",fontWeight:600}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* FASE: pasando ahora */}
+      {phase === "passing" && (
+        <div style={{textAlign:"center"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 16px",borderRadius:99,
+            background:satColor+"15",border:`1px solid ${satColor}40`,marginBottom:24}}>
+            <span style={{display:"block",width:6,height:6,borderRadius:"50%",background:satColor,animation:"livePulse 1s infinite"}}/>
+            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:satColor,letterSpacing:"0.18em"}}>PASANDO AHORA</span>
+          </div>
+          <div style={{fontSize:"clamp(80px,20vw,140px)",lineHeight:1}}>🛰</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,8vw,52px)",fontWeight:800,color:"#fff",marginTop:16}}>
+            ¡Mira hacia el {dirLabel}!
+          </div>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:"rgba(255,255,255,0.35)",marginTop:12}}>
+            {elapsed}s transcurridos · {Math.max(0,Math.floor(pass.duration-elapsed))}s restantes
+          </div>
+          <div style={{marginTop:24,height:4,background:"rgba(255,255,255,0.06)",borderRadius:2,width:240,margin:"24px auto 0"}}>
+            <div style={{height:4,background:satColor,borderRadius:2,
+              width:`${Math.min(100,(elapsed/pass.duration)*100)}%`,transition:"width 1s linear"}}/>
+          </div>
+        </div>
+      )}
+
+      {/* FASE: terminó */}
+      {phase === "done" && (
+        <div style={{textAlign:"center",maxWidth:380}}>
+          <div style={{fontSize:56,marginBottom:20}}>✨</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,7vw,44px)",fontWeight:800,color:"#fff",marginBottom:8,lineHeight:1.1}}>
+            {sat.name} acaba de pasar
+          </div>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:"rgba(255,255,255,0.35)",marginBottom:32,lineHeight:1.8}}>
+            {fmtDate(pass.rise)} · {fmtTime(pass.rise)}h · {Math.floor(pass.duration/60)}m {pass.duration%60}s
+            {pass.visible ? " · 👁 visible a simple vista" : ""}
+          </div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,color:"rgba(255,255,255,0.5)",marginBottom:24}}>
+            ¿La viste?
+          </div>
+          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <button
+              onClick={() => generateShareCard({ pass, sat, city:"Chile" })}
+              style={{
+                padding:"14px 28px",borderRadius:14,
+                background:satColor,border:"none",
+                color:"#000",fontFamily:"'Syne',sans-serif",
+                fontSize:13,fontWeight:700,cursor:"pointer",
+                display:"flex",alignItems:"center",gap:8,
+              }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              Compartir este momento
+            </button>
+            <button onClick={onClose} style={{
+              padding:"14px 28px",borderRadius:14,
+              background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",
+              color:"rgba(255,255,255,0.6)",fontFamily:"'Syne',sans-serif",
+              fontSize:13,cursor:"pointer",
+            }}>
+              Volver al sitio
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────
    NOTIF BANNER
 ───────────────────────────────────────────── */
@@ -992,6 +1203,8 @@ export default function App() {
   const [alertMinutes, setAlertMinutes]     = useState(10);
   const [alertPermission, setAlertPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
   const [activeSection, setActiveSection]   = useState("passes"); // "passes" | "news"
+  const [nightMode, setNightMode]           = useState(false);
+  const [nightPass, setNightPass]           = useState(null);
   const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -1368,6 +1581,26 @@ export default function App() {
                   </div>
                 </div>
               )}
+            {/* Botón modo observación nocturna */}
+            {next && (
+              <button
+                onClick={() => { setNightPass(next); setNightMode(true); }}
+                style={{
+                  marginTop:16, display:"inline-flex", alignItems:"center", gap:8,
+                  padding:"10px 20px", borderRadius:12,
+                  background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)",
+                  color:"rgba(255,255,255,0.5)", fontFamily:"'IBM Plex Mono',monospace",
+                  fontSize:10, letterSpacing:"0.14em", cursor:"pointer", transition:"all 0.2s",
+                }}
+                onMouseEnter={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.08)"; e.currentTarget.style.color="#fff"; }}
+                onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.color="rgba(255,255,255,0.5)"; }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                </svg>
+                MODO OBSERVACIÓN NOCTURNA
+              </button>
+            )}
             </div>
 
             {/* Orbital planet */}
@@ -1661,6 +1894,9 @@ export default function App() {
 
       {/* Notif banner */}
       {!notifDismissed && <NotifBanner next={notifNext} sat={sat} onDismiss={() => setNotifDismissed(true)} />}
+      {nightMode && nightPass && (
+        <NightMode pass={nightPass} sat={sat} onClose={() => setNightMode(false)} />
+      )}
     </>
   );
 }
