@@ -161,220 +161,238 @@ function OrbitalPlanet({ sat, pos }) {
   );
 }
 /* ─────────────────────────────────────────────
-   GLOBE 3D — Three.js · satélite centrado + órbita real
+   GLOBE — SVG estático centrado en Latinoamérica
+   Muestra la órbita real del satélite en 3D:
+   - Segmentos sólidos = lado visible de la Tierra
+   - Segmentos punteados = lado opuesto (detrás)
+   - Punto + halo = posición actual del satélite
+   - Punto rojo = Santiago
 ───────────────────────────────────────────── */
+
+const SAT_ORB = {
+  ISS:      { inc: 51.6, period: 92.9  },
+  HST:      { inc: 28.5, period: 95.4  },
+  TIANGONG: { inc: 41.5, period: 91.6  },
+  SSOT:     { inc: 97.8, period: 97.1  },
+  LEMU:     { inc: 97.5, period: 95.6  },
+  SUCHAI2:  { inc: 97.5, period: 95.6  },
+  SUCHAI3:  { inc: 97.5, period: 95.6  },
+};
+
+// Proyección ortográfica centrada en lat0,lon0
+function ortho(lat, lon, lat0, lon0, R, cx, cy) {
+  const f  = d2r, sinLat0 = Math.sin(f(lat0)), cosLat0 = Math.cos(f(lat0));
+  const sinLat = Math.sin(f(lat)), cosLat = Math.cos(f(lat));
+  const dLon   = f(lon - lon0);
+  const cosC   = sinLat0 * sinLat + cosLat0 * cosLat * Math.cos(dLon);
+  // cosC < 0 → punto en el hemisferio opuesto (detrás del globo)
+  const x = R * cosLat * Math.sin(dLon);
+  const y = R * (cosLat0 * sinLat - sinLat0 * cosLat * Math.cos(dLon));
+  return { x: cx + x, y: cy - y, visible: cosC >= 0 };
+}
+
+// Genera órbita completa: 1 período completo centrada en posición actual
+function buildFullOrbit(lat, lon, inc, period) {
+  const pts = [];
+  const steps = 360;
+  const degPerStep = 360 / steps;
+  for (let i = 0; i <= steps; i++) {
+    const t   = (i / steps - 0.5) * period;           // minutos
+    const dLon = (360 / period) * t;
+    const phase = (t / period) * 2 * Math.PI;
+    const oLat  = lat + Math.sin(phase) * inc * 0.28;
+    const oLon  = lon + dLon;
+    const cLat  = Math.max(-90, Math.min(90, oLat));
+    const cLon  = ((oLon + 180) % 360 + 360) % 360 - 180;
+    pts.push({ lat: cLat, lon: cLon, t });
+  }
+  return pts;
+}
+
 function Globe({ sat, pos }) {
-  const mountRef   = useRef(null);
-  const threeRef   = useRef({});   // { renderer, earth, cloud, satGroup, nadirLine, orbitLine }
-  const posRef     = useRef(pos);
-  const satRef     = useRef(sat);
-  useEffect(() => { posRef.current = pos; }, [pos]);
-  useEffect(() => { satRef.current = sat; }, [sat]);
+  const W = 280, H = 280, R = 120, cx = 140, cy = 140;
+  // Centrado en Latinoamérica: lat -15, lon -65
+  const cLat = -15, cLon = -65;
 
-  useEffect(() => {
-    const el = mountRef.current;
-    if (!el) return;
-    let animId, pulseT = 0;
+  const orb  = SAT_ORB[sat.id] || { inc: 51.6, period: 92.9 };
+  const sLat = pos?.lat ?? -15;
+  const sLon = pos?.lon ?? -65;
+  const alt  = pos?.alt_km ?? 400;
 
-    // lat/lon → Vector3 a radio r (Three.js usa Y-up, longitud en theta)
-    function ll2v(lat, lon, r) {
-      const phi   = (90 - lat)  * Math.PI / 180;
-      const theta = (lon + 180) * Math.PI / 180;
-      return new THREE.Vector3(
-        -r * Math.sin(phi) * Math.cos(theta),
-         r * Math.cos(phi),
-         r * Math.sin(phi) * Math.sin(theta)
-      );
-    }
+  // Órbita completa
+  const orbitPts = buildFullOrbit(sLat, sLon, orb.inc, orb.period);
 
-    // Genera puntos de la órbita visible (1 período adelante y atrás)
-    function buildOrbit(lat, lon, inc, periodMin) {
-      const pts = [];
-      const steps = 160;
-      const degPerMin = 360 / periodMin;                // grados de longitud por minuto
-      for (let i = 0; i <= steps; i++) {
-        const t   = (i / steps - 0.5) * periodMin;     // minutos: -period/2 → +period/2
-        const lo  = lon + degPerMin * t;
-        const la  = lat + Math.sin((t / periodMin) * 2 * Math.PI) * inc * 0.20;
-        const cla = Math.max(-90, Math.min(90, la));
-        const clo = ((lo + 180) % 360 + 360) % 360 - 180;
-        pts.push(ll2v(cla, clo, 1.022));
+  // Convertir a puntos proyectados
+  const projected = orbitPts.map(p => ({
+    ...ortho(p.lat, p.lon, cLat, cLon, R, cx, cy),
+    t: p.t,
+  }));
+
+  // Separar en segmentos continuos visible/oculto
+  function buildSegments(pts) {
+    const segs = [];
+    let seg = null, lastVis = null;
+    for (const p of pts) {
+      if (lastVis !== null && p.visible !== lastVis) {
+        if (seg) segs.push(seg);
+        seg = { visible: p.visible, pts: [] };
       }
-      return pts;
+      if (!seg) seg = { visible: p.visible, pts: [] };
+      seg.pts.push(p);
+      lastVis = p.visible;
     }
+    if (seg && seg.pts.length > 1) segs.push(seg);
+    return segs;
+  }
+  const segments = buildSegments(projected);
 
-    function init() {
-      const W = el.clientWidth  || 280;
-      const H = el.clientHeight || 280;
+  // Posición actual del satélite
+  const satProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
+  // Santiago
+  const stProj   = ortho(SANTIAGO.lat, SANTIAGO.lon, cLat, cLon, R, cx, cy);
+  // Punto subsatelital (nadir en la superficie)
+  const nadProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
 
-      const scene  = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
-      camera.position.set(0, 0, 2.55);
+  // Altitud real del satélite en escala visual (max ~800km → +18px extra)
+  const altOffset = Math.min((alt / 6371) * R * 0.9, 22);
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
-      renderer.setSize(W, H);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-      renderer.setClearColor(0x000000, 0);
-      el.appendChild(renderer.domElement);
-
-      // Luces
-      scene.add(new THREE.AmbientLight(0x334466, 1.0));
-      const sun = new THREE.DirectionalLight(0xfff8e8, 1.4);
-      sun.position.set(5, 3, 5);
-      scene.add(sun);
-
-      // Tierra
-      const loader  = new THREE.TextureLoader();
-      const earth   = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 48, 48),
-        new THREE.MeshPhongMaterial({
-          map:         loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
-          bumpMap:     loader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
-          bumpScale:   0.03,
-          specularMap: loader.load('https://unpkg.com/three-globe/example/img/earth-water.png'),
-          specular:    new THREE.Color(0x111122),
-          shininess:   5,
-        })
-      );
-      scene.add(earth);
-
-      // Nubes
-      const cloud = new THREE.Mesh(
-        new THREE.SphereGeometry(1.010, 48, 48),
-        new THREE.MeshPhongMaterial({
-          map: loader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
-          transparent: true, opacity: 0.20,
-        })
-      );
-      scene.add(cloud);
-
-      // Atmósfera
-      scene.add(new THREE.Mesh(
-        new THREE.SphereGeometry(1.07, 32, 32),
-        new THREE.MeshPhongMaterial({ color: new THREE.Color(sat.color), transparent: true, opacity: 0.04, side: THREE.FrontSide })
-      ));
-
-      // Santiago
-      const stDot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.013, 10, 10),
-        new THREE.MeshBasicMaterial({ color: 0xff4d6d })
-      );
-      scene.add(stDot);
-
-      // Satélite: núcleo + 2 halos
-      const sc = new THREE.Color(sat.color);
-      const satCore  = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 12), new THREE.MeshBasicMaterial({ color: sc }));
-      const satHalo  = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 12), new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.30 }));
-      const satHalo2 = new THREE.Mesh(new THREE.SphereGeometry(0.108, 12, 12), new THREE.MeshBasicMaterial({ color: sc, transparent: true, opacity: 0.12 }));
-      const satGrp   = new THREE.Group();
-      satGrp.add(satCore, satHalo, satHalo2);
-      scene.add(satGrp);
-
-      // Línea nadir
-      const nadirGeo  = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-      const nadirLine = new THREE.Line(nadirGeo, new THREE.LineBasicMaterial({ color: sc, transparent: true, opacity: 0.55 }));
-      scene.add(nadirLine);
-
-      // Órbita
-      const orbitGeo  = new THREE.BufferGeometry().setFromPoints(buildOrbit(0, 0, 51.6, 92.9));
-      const orbitLine = new THREE.Line(orbitGeo, new THREE.LineBasicMaterial({ color: sc, transparent: true, opacity: 0.38 }));
-      scene.add(orbitLine);
-
-      threeRef.current = { renderer, earth, cloud, satGrp, satHalo, satHalo2, nadirLine, orbitLine, stDot, scene, camera };
-
-      const SAT_ORB = { ISS:{ inc:51.6,p:92.9 }, HST:{ inc:28.5,p:95.4 }, TIANGONG:{ inc:41.5,p:91.6 }, SSOT:{ inc:97.8,p:97.1 }, LEMU:{ inc:97.5,p:95.6 }, SUCHAI2:{ inc:97.5,p:95.6 }, SUCHAI3:{ inc:97.5,p:95.6 } };
-      let lastOrbit = 0;
-
-      function animate(ts) {
-        animId = requestAnimationFrame(animate);
-        pulseT += 0.03;
-
-        const p  = posRef.current;
-        const s  = satRef.current;
-        const { renderer, earth, cloud, satGrp, satHalo, satHalo2, nadirLine, orbitLine, stDot, scene, camera } = threeRef.current;
-
-        if (p?.lat !== undefined) {
-          const orb      = SAT_ORB[s.id] || { inc: 51.6, p: 92.9 };
-          const altScale = 1 + ((p.alt_km ?? 400) / 6371);
-
-          // ── Posición 3D del satélite (fija en espacio) ──
-          const satVec  = ll2v(p.lat, p.lon, altScale);
-          const surfVec = ll2v(p.lat, p.lon, 1.012);
-          satGrp.position.copy(satVec);
-          nadirLine.geometry.setFromPoints([satVec, surfVec]);
-          nadirLine.geometry.attributes.position.needsUpdate = true;
-
-          // ── Santiago siempre en su posición geográfica ──
-          stDot.position.copy(ll2v(-33.4489, -70.6693, 1.013));
-
-          // ── CÁMARA sigue al satélite ──
-          // Calculamos la dirección hacia el satélite y posicionamos la cámara ahí
-          const satDir   = satVec.clone().normalize();
-          const camDist  = 2.55;
-          // Lerp suave de la cámara hacia el satélite
-          camera.position.lerp(satDir.multiplyScalar(camDist), 0.012);
-          camera.lookAt(0, 0, 0);
-
-          // ── Tierra rota suavemente (decorativa) ──
-          earth.rotation.y += 0.0004;
-          cloud.rotation.y  = earth.rotation.y + 0.001;
-
-          // ── Órbita: actualizar cada 15s ──
-          if (ts - lastOrbit > 15000) {
-            lastOrbit = ts;
-            orbitLine.geometry.setFromPoints(buildOrbit(p.lat, p.lon, orb.inc, orb.p));
-            orbitLine.geometry.attributes.position.needsUpdate = true;
-          }
-        }
-
-        // Pulso del satélite
-        const pulse = 0.5 + 0.5 * Math.abs(Math.sin(pulseT));
-        satHalo.material.opacity  = 0.15 + 0.20 * pulse;
-        satHalo2.material.opacity = 0.05 + 0.09 * pulse;
-
-        renderer.render(scene, camera);
-      }
-      animate(0);
+  // Grilla de meridianos/paralelos
+  const grid = [];
+  for (let la = -80; la <= 80; la += 20) {
+    const pts2 = [];
+    for (let lo = -180; lo <= 180; lo += 3) {
+      const p = ortho(la, lo, cLat, cLon, R, cx, cy);
+      if (p.visible) pts2.push(p);
+      else if (pts2.length > 1) { grid.push([...pts2]); pts2.length = 0; }
     }
-
-    if (window.THREE) { init(); }
-    else {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-      s.onload = init;
-      document.head.appendChild(s);
+    if (pts2.length > 1) grid.push(pts2);
+  }
+  for (let lo = -180; lo <= 180; lo += 20) {
+    const pts2 = [];
+    for (let la = -90; la <= 90; la += 3) {
+      const p = ortho(la, lo, cLat, cLon, R, cx, cy);
+      if (p.visible) pts2.push(p);
+      else if (pts2.length > 1) { grid.push([...pts2]); pts2.length = 0; }
     }
+    if (pts2.length > 1) grid.push(pts2);
+  }
 
-    return () => {
-      cancelAnimationFrame(animId);
-      const { renderer } = threeRef.current;
-      if (renderer) {
-        renderer.dispose();
-        if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
-      }
-      threeRef.current = {};
-    };
-  }, [sat.id, sat.color]);
+  // Contorno de continentes simplificado (Sudamérica + Centroamérica visible)
+  const SA = [[-5,-81],[0,-80],[2,-77],[6,-77],[8,-77],[10,-75],[12,-72],[10,-62],[12,-61],[10,-61],[8,-60],[6,-60],[4,-52],[4,-51],[2,-50],[0,-50],[-3,-42],[-5,-35],[-9,-35],[-12,-37],[-15,-39],[-20,-40],[-23,-43],[-26,-48],[-28,-49],[-30,-51],[-33,-52],[-38,-58],[-41,-62],[-44,-65],[-46,-65],[-50,-69],[-52,-69],[-54,-68],[-55,-65],[-55,-63],[-53,-58],[-51,-59],[-48,-65],[-44,-66],[-40,-62],[-36,-57],[-33,-52],[-28,-49],[-24,-46],[-20,-41],[-15,-39],[-10,-37],[-5,-35],[-3,-42],[0,-50],[2,-50],[4,-52],[6,-60],[8,-60],[10,-61],[10,-62],[12,-61],[10,-75],[8,-77],[6,-77],[4,-77],[2,-77],[0,-80],[-5,-81]];
+
+  const toPath = (pts) => pts.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  const saProjected = SA.map(([la,lo]) => ortho(la, lo, cLat, cLon, R, cx, cy)).filter(p => p.visible);
 
   return (
-    <div ref={mountRef} style={{
-      width: '100%', height: 280,
-      borderRadius: 16, overflow: 'hidden',
-      background: 'radial-gradient(ellipse at 38% 32%, #0C1E38 0%, #030A14 100%)',
-      position: 'relative',
-    }}>
-      {pos && (
-        <div style={{
-          position:'absolute', bottom:10, left:12, zIndex:2,
-          fontFamily:"'IBM Plex Mono',monospace", fontSize:8.5,
-          color: sat.color, letterSpacing:'0.14em', textTransform:'uppercase',
-          background:'rgba(0,0,0,0.55)', padding:'4px 10px', borderRadius:6,
-          border:`1px solid ${sat.color}35`,
-        }}>
-          ● {sat.name} · {Math.abs(pos.lat ?? 0).toFixed(1)}°{(pos.lat ?? 0) >= 0 ? 'N' : 'S'} {Math.abs(pos.lon ?? 0).toFixed(1)}°{(pos.lon ?? 0) >= 0 ? 'E' : 'O'}
-        </div>
-      )}
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', maxWidth: W, display:'block' }}>
+      <defs>
+        <radialGradient id={`gbg_${sat.id}`} cx="38%" cy="32%">
+          <stop offset="0%"   stopColor="#0D1E36"/>
+          <stop offset="100%" stopColor="#030A14"/>
+        </radialGradient>
+        <radialGradient id={`gatm_${sat.id}`} cx="50%" cy="50%">
+          <stop offset="75%"  stopColor="transparent"/>
+          <stop offset="100%" stopColor={sat.color + "18"}/>
+        </radialGradient>
+        <clipPath id={`gclip_${sat.id}`}>
+          <circle cx={cx} cy={cy} r={R}/>
+        </clipPath>
+        <filter id={`glow_${sat.id}`}>
+          <feGaussianBlur stdDeviation="5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      {/* Fondo del globo */}
+      <circle cx={cx} cy={cy} r={R} fill={`url(#gbg_${sat.id})`}/>
+
+      {/* Grilla */}
+      <g clipPath={`url(#gclip_${sat.id})`}>
+        {grid.map((pts2,i) => (
+          <polyline key={i}
+            points={pts2.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
+            fill="none" stroke="#0C2545" strokeWidth="0.5" opacity="0.8"/>
+        ))}
+
+        {/* Sudamérica */}
+        {saProjected.length > 2 && (
+          <path d={toPath(saProjected)} fill="#0A1E34" stroke="#1A3A60" strokeWidth="1.2" fillRule="evenodd"/>
+        )}
+
+        {/* ── ÓRBITA ──
+            Segmentos sólidos = frente del globo (visible)
+            Segmentos punteados = detrás del globo (oculto)  */}
+        {segments.map((seg, i) => {
+          const pts2 = seg.pts.filter(p => p.visible || !seg.visible);
+          if (pts2.length < 2) return null;
+          const d = pts2.map((p,j) => `${j===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+          return (
+            <path key={i} d={d} fill="none"
+              stroke={sat.color}
+              strokeWidth={seg.visible ? 1.8 : 0.8}
+              strokeOpacity={seg.visible ? 0.85 : 0.25}
+              strokeDasharray={seg.visible ? 'none' : '4 5'}
+            />
+          );
+        })}
+
+        {/* Santiago */}
+        {stProj.visible && (
+          <g>
+            <circle cx={stProj.x} cy={stProj.y} r={8} fill="none" stroke="#ff4d6d" strokeWidth="0.7" opacity="0.3"/>
+            <circle cx={stProj.x} cy={stProj.y} r={2.8} fill="#ff4d6d"/>
+            <text x={stProj.x+6} y={stProj.y-4} fontSize="7" fill="#ff4d6d"
+              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">Santiago</text>
+          </g>
+        )}
+
+        {/* Satélite — visible o detrás del globo */}
+        {satProj.visible ? (
+          <g filter={`url(#glow_${sat.id})`}>
+            {/* Línea nadir (satélite → superficie) */}
+            <line
+              x1={satProj.x} y1={satProj.y}
+              x2={nadProj.x} y2={nadProj.y}
+              stroke={sat.color} strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3"/>
+            {/* Halo grande */}
+            <circle cx={satProj.x} cy={satProj.y} r={16} fill={sat.color} fillOpacity="0.07"/>
+            {/* Halo medio */}
+            <circle cx={satProj.x} cy={satProj.y} r={10} fill={sat.color} fillOpacity="0.15">
+              <animate attributeName="r" values="8;12;8" dur="2.4s" repeatCount="indefinite"/>
+              <animate attributeName="fill-opacity" values="0.15;0.05;0.15" dur="2.4s" repeatCount="indefinite"/>
+            </circle>
+            {/* Núcleo */}
+            <circle cx={satProj.x} cy={satProj.y} r={5} fill={sat.color}/>
+            {/* Label */}
+            <text x={satProj.x+9} y={satProj.y-7} fontSize="8" fill={sat.color}
+              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">{sat.name}</text>
+          </g>
+        ) : (
+          /* Satélite detrás del globo — mostrar posición aproximada tenue */
+          <g opacity="0.2">
+            <circle cx={cx + (satProj.x-cx)*0.85} cy={cy + (satProj.y-cy)*0.85} r={4} fill={sat.color}/>
+            <text x={cx + (satProj.x-cx)*0.85+7} y={cy + (satProj.y-cy)*0.85-5}
+              fontSize="7" fill={sat.color} fontFamily="'IBM Plex Mono',monospace">{sat.name} ←</text>
+          </g>
+        )}
+      </g>
+
+      {/* Atmósfera */}
+      <circle cx={cx} cy={cy} r={R+10} fill={`url(#gatm_${sat.id})`}/>
+      {/* Borde del globo */}
+      <circle cx={cx} cy={cy} r={R} fill="none" stroke={sat.color+"28"} strokeWidth="1.2"/>
+
+      {/* Badge estado */}
+      <rect x="8" y="8" width="130" height="18" rx="5" fill="rgba(0,0,0,0.55)" stroke={satProj.visible ? sat.color+"50" : "rgba(255,255,255,0.08)"} strokeWidth="0.7"/>
+      <circle cx="18" cy="17" r="3" fill={satProj.visible ? sat.color : "#334155"}>
+        {satProj.visible && <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite"/>}
+      </circle>
+      <text x="26" y="21" fontSize="7.5" fontFamily="'IBM Plex Mono',monospace"
+        fill={satProj.visible ? sat.color : "#334155"} letterSpacing="0.1em">
+        {satProj.visible ? "SOBRE HEMISFERIO" : "LADO OPUESTO"}
+      </text>
+    </svg>
   );
 }
 
