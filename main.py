@@ -234,13 +234,16 @@ def _compute_passes(sat_id: str, days: int, result: list):
                 pase["max_el"] = float(round(alt.degrees, 1))
                 pase["max_az"] = float(round(az.degrees, 1))
             elif evento == 2:
+                # Ignorar pases incompletos (satélite ya estaba sobre horizonte)
+                if "rise" not in pase or "max" not in pase:
+                    pase = {}
+                    continue
                 pase["set"]    = dt.isoformat()
                 pase["set_az"] = float(round(az.degrees, 1))
                 rise_dt = datetime.fromisoformat(pase["rise"])
                 pase["duration"] = int((dt - rise_dt.replace(tzinfo=timezone.utc)).seconds)
                 pase["visible"]  = bool(pase.get("max_el", 0) > 25)
-                if "rise" in pase and "max" in pase:
-                    passes.append(pase)
+                passes.append(pase)
                 pase = {}
 
         result.append({"satellite": sat_id, "passes": passes})
