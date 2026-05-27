@@ -396,6 +396,7 @@ function Globe({ sat, pos }) {
   );
 }
 
+/* ─────────────────────────────────────────────
    CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
