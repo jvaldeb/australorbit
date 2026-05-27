@@ -396,7 +396,6 @@ function Globe({ sat, pos }) {
   );
 }
 
-/* ─────────────────────────────────────────────
    CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
 function ChileMap({ sat, pos }) {
@@ -625,6 +624,233 @@ function PassCard({ pass, sat, isNext }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────
+   OBSERVATION SIDEBAR
+   - Clima del cielo en tiempo real (Open-Meteo)
+   - Guía visual: cómo ver el satélite
+   - Condiciones del próximo pase
+───────────────────────────────────────────── */
+function ObservationSidebar({ sat, next, userLat = -33.4489, userLon = -70.6693 }) {
+  const [sky, setSky] = useState(null);
+  const [skyLoad, setSkyLoad] = useState(true);
+
+  useEffect(() => {
+    // Open-Meteo: clima actual, sin API key
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=cloud_cover,visibility,weather_code&timezone=auto`)
+      .then(r => r.json())
+      .then(d => {
+        const c = d.current;
+        setSky({
+          clouds:     c.cloud_cover,       // 0-100%
+          visibility: c.visibility / 1000, // km
+          code:       c.weather_code,      // WMO code
+        });
+        setSkyLoad(false);
+      })
+      .catch(() => setSkyLoad(false));
+  }, [userLat, userLon]);
+
+  // Interpretar condición del cielo
+  function skyCondition(clouds, code) {
+    if (code >= 61) return { label: "Lluvia", color: "#64748b", icon: "🌧", score: 0 };
+    if (clouds >= 80) return { label: "Muy nublado", color: "#475569", icon: "☁️", score: 1 };
+    if (clouds >= 50) return { label: "Parcialmente nublado", color: "#f59e0b", icon: "⛅", score: 2 };
+    if (clouds >= 20) return { label: "Mayormente despejado", color: "#57C7FF", icon: "🌤", score: 3 };
+    return { label: "Cielo despejado", color: "#4ade80", icon: "★", score: 4 };
+  }
+
+  const cond = sky ? skyCondition(sky.clouds, sky.code) : null;
+
+  // Condiciones del próximo pase combinadas con clima
+  function passQuality() {
+    if (!next || !sky) return null;
+    const elScore  = next.max_el >= 60 ? 3 : next.max_el >= 30 ? 2 : 1;
+    const skyScore = cond?.score ?? 2;
+    const visScore = next.visible ? 2 : 1;
+    const total    = elScore + skyScore + visScore;
+    if (total >= 7) return { label: "Condiciones excelentes", color: "#4ade80" };
+    if (total >= 5) return { label: "Buenas condiciones", color: "#57C7FF" };
+    if (total >= 3) return { label: "Condiciones regulares", color: "#f59e0b" };
+    return { label: "Difícil de observar", color: "#64748b" };
+  }
+
+  const pq = passQuality();
+  const glass = (extra={}) => ({
+    background: "rgba(255,255,255,0.028)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    backdropFilter: "blur(28px)",
+    WebkitBackdropFilter: "blur(28px)",
+    borderRadius: 16,
+    ...extra,
+  });
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:12, position:"sticky", top:20 }}>
+
+      {/* ── BLOQUE 1: Clima del cielo ── */}
+      <div style={{...glass(), padding:"16px 18px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:"#fff"}}>
+            Cielo ahora
+          </span>
+          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7.5,color:"rgba(255,255,255,0.2)",letterSpacing:"0.1em"}}>
+            OPEN-METEO
+          </span>
+        </div>
+
+        {skyLoad && (
+          <div style={{padding:"16px 0",textAlign:"center",fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:"#57C7FF",letterSpacing:"0.12em"}}>
+            Consultando clima...
+          </div>
+        )}
+
+        {!skyLoad && sky && cond && (
+          <>
+            {/* Indicador principal */}
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,padding:"12px 14px",background:cond.color+"10",borderRadius:12,border:`1px solid ${cond.color}30`}}>
+              <span style={{fontSize:28}}>{cond.icon}</span>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:cond.color,fontFamily:"'Syne',sans-serif"}}>{cond.label}</div>
+                <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace",marginTop:2}}>
+                  {cond.score >= 3 ? "Buenas condiciones para observar" : cond.score >= 2 ? "Observación posible" : "Difícil observar satélites"}
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de nubosidad */}
+            <div style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"rgba(255,255,255,0.3)",letterSpacing:"0.08em"}}>NUBOSIDAD</span>
+                <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:cond.color}}>{sky.clouds}%</span>
+              </div>
+              <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:2}}>
+                <div style={{height:4,width:`${sky.clouds}%`,background:cond.color,borderRadius:2,transition:"width 0.8s ease"}}/>
+              </div>
+            </div>
+
+            {/* Visibilidad */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"rgba(255,255,255,0.3)",letterSpacing:"0.08em"}}>VISIBILIDAD</span>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:"rgba(255,255,255,0.6)"}}>
+                {sky.visibility >= 20 ? "+20 km" : `${sky.visibility.toFixed(0)} km`}
+              </span>
+            </div>
+          </>
+        )}
+
+        {!skyLoad && !sky && (
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace",textAlign:"center",padding:"10px 0"}}>
+            No se pudo obtener el clima
+          </div>
+        )}
+      </div>
+
+      {/* ── BLOQUE 2: Calidad del próximo pase ── */}
+      {next && pq && (
+        <div style={{...glass(), padding:"16px 18px"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:"#fff",marginBottom:12}}>
+            Próximo pase
+          </div>
+          <div style={{padding:"10px 14px",background:pq.color+"10",borderRadius:10,border:`1px solid ${pq.color}30`,marginBottom:12}}>
+            <div style={{fontSize:12,fontWeight:600,color:pq.color,fontFamily:"'Syne',sans-serif"}}>{pq.label}</div>
+            <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace",marginTop:3}}>
+              {fmtDate(next.rise)} · {fmtTime(next.rise)}h
+            </div>
+          </div>
+          {[
+            ["Elevación", `${next.max_el}°`, next.max_el >= 40 ? "#4ade80" : next.max_el >= 20 ? "#f59e0b" : "#64748b"],
+            ["Visible", next.visible ? "Sí" : "No", next.visible ? "#4ade80" : "#64748b"],
+            ["Cielo", cond ? cond.label : "—", cond ? cond.color : "#64748b"],
+          ].map(([label, val, color]) => (
+            <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:8,marginBottom:8,borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"rgba(255,255,255,0.25)",letterSpacing:"0.1em"}}>{label.toUpperCase()}</span>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10.5,color}}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── BLOQUE 3: Guía visual cómo observar ── */}
+      <div style={{...glass(), padding:"16px 18px"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:"#fff",marginBottom:14}}>
+          ¿Cómo ver {sat.name}?
+        </div>
+
+        {/* Ilustración SVG del cielo nocturno con satélite */}
+        <svg viewBox="0 0 240 120" style={{width:"100%",borderRadius:10,marginBottom:14,background:"#020810"}}>
+          {/* Estrellas */}
+          {[[20,15],[45,8],[80,20],[110,5],[150,18],[190,10],[220,15],[30,40],[170,35],[200,45],[60,55],[130,50]].map(([x,y],i)=>(
+            <circle key={i} cx={x} cy={y} r={0.8} fill="white" opacity={0.4+Math.random()*0.4}/>
+          ))}
+          {/* Horizonte */}
+          <rect x="0" y="90" width="240" height="30" fill="#0A1628"/>
+          <line x1="0" y1="90" x2="240" y2="90" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5"/>
+          {/* Silueta ciudad */}
+          <rect x="10"  y="78" width="12" height="12" fill="#0A1628"/>
+          <rect x="25"  y="72" width="8"  height="18" fill="#0A1628"/>
+          <rect x="36"  y="80" width="10" height="10" fill="#0A1628"/>
+          <rect x="190" y="75" width="14" height="15" fill="#0A1628"/>
+          <rect x="207" y="70" width="9"  height="20" fill="#0A1628"/>
+          <rect x="219" y="78" width="12" height="12" fill="#0A1628"/>
+          {/* Trayectoria del satélite */}
+          <path d="M 20 70 Q 120 20 220 55" fill="none" stroke={sat.color} strokeWidth="1" strokeOpacity="0.4" strokeDasharray="4 4"/>
+          {/* Satélite con halo */}
+          <circle cx="120" cy="28" r="10" fill={sat.color} fillOpacity="0.08"/>
+          <circle cx="120" cy="28" r="5"  fill={sat.color} fillOpacity="0.18">
+            <animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="fill-opacity" values="0.18;0.05;0.18" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="120" cy="28" r="2.5" fill={sat.color}/>
+          {/* Etiqueta */}
+          <text x="128" y="24" fontSize="7" fill={sat.color} fontFamily="monospace">{sat.name}</text>
+          {/* Dirección: N, S, E, O */}
+          {[["N",120,106],["S",120,87],["E",230,97],["O",8,97]].map(([l,x,y])=>(
+            <text key={l} x={x} y={y} fontSize="7" fill="rgba(255,255,255,0.2)" fontFamily="monospace" textAnchor="middle">{l}</text>
+          ))}
+          {/* Observador */}
+          <circle cx="120" cy="93" r="3" fill="#ff4d6d"/>
+          <line x1="120" y1="90" x2="120" y2="35" stroke="#ff4d6d" strokeWidth="0.5" strokeOpacity="0.3" strokeDasharray="2 3"/>
+          <text x="128" y="98" fontSize="6.5" fill="#ff4d6d" fontFamily="monospace">Tú</text>
+        </svg>
+
+        {/* Pasos */}
+        {[
+          { n:"1", title:"Sal afuera", desc:"Ve a un lugar oscuro, lejos de luces artificiales. 5 min antes del pase." },
+          { n:"2", title:"Mira al horizonte", desc:`Dirígete hacia el ${next ? azLabel(next.rise_az) : "norte"} — por ahí saldrá ${sat.name}.` },
+          { n:"3", title:"Busca un punto de luz", desc:"Se mueve uniformemente y más rápido que los aviones. No parpadea." },
+          { n:"4", title:"Síguela con la vista", desc:`Tendrás ~${next ? Math.floor(next.duration/60)+"m "+next.duration%60+"s" : "varios minutos"} para verla cruzar el cielo.` },
+        ].map(step => (
+          <div key={step.n} style={{display:"flex",gap:10,marginBottom:12,alignItems:"flex-start"}}>
+            <div style={{
+              width:22,height:22,borderRadius:"50%",flexShrink:0,
+              background:sat.color+"15",border:`1px solid ${sat.color}40`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:sat.color,fontWeight:700,
+            }}>{step.n}</div>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.8)",marginBottom:2,fontFamily:"'Syne',sans-serif"}}>{step.title}</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",lineHeight:1.5}}>{step.desc}</div>
+            </div>
+          </div>
+        ))}
+
+        {/* Tip final */}
+        <div style={{marginTop:4,padding:"10px 12px",background:"rgba(255,255,255,0.02)",borderRadius:10,border:"1px solid rgba(255,255,255,0.05)"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em",marginBottom:4}}>CONSEJO</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",lineHeight:1.6}}>
+            {sat.name === "ISS"
+              ? "La ISS es el objeto más brillante del cielo nocturno después de la Luna. Con magnitud -3 puede verse incluso en ciudades con contaminación lumínica."
+              : `${sat.name} es más pequeño que la ISS. Necesitarás cielo oscuro y ojos adaptados a la oscuridad (~10 min en la penumbra).`
+            }
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
@@ -1318,32 +1544,14 @@ export default function App() {
               )}
             </div>
 
-            {/* ── COL 3: News sidebar (desktop only) ── */}
-            <div className="news-col" style={{display:"flex",flexDirection:"column",position:"sticky",top:20,gap:0}}>
-              <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:14}}>
-                <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:"#fff"}}>
-                  Noticias{" "}
-                  <span style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontWeight:400,color:"#57C7FF"}}>espaciales</span>
-                </h2>
-                <span style={{fontSize:7.5,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em"}}>SPACEFLIGHT</span>
-              </div>
-              {newsLoading&&<div style={{padding:36,textAlign:"center"}}><div style={{fontSize:18,marginBottom:10}}>📡</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"#57C7FF",letterSpacing:"0.12em",animation:"shimmer 1.5s ease infinite"}}>Cargando...</div></div>}
-              {!newsLoading&&news.length===0&&<div style={{padding:32,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:12}}><div style={{fontSize:18,marginBottom:8}}>📭</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:"rgba(255,255,255,0.15)"}}>Sin noticias</div></div>}
-              {!newsLoading&&news.map((a,i)=>(
-                <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
-                  style={{display:"block",textDecoration:"none",borderRadius:14,overflow:"hidden",...glass({}),marginBottom:10,transition:"border-color 0.2s"}}>
-                  {a.image&&<div style={{height:105,overflow:"hidden"}}><img src={a.image} alt={a.title} style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.72}} onError={e=>{e.target.parentElement.style.display="none";}}/></div>}
-                  <div style={{padding:"11px 13px"}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:7}}>
-                      <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",padding:"2px 7px",borderRadius:4,background:"rgba(87,199,255,0.07)",color:"#57C7FF",border:"1px solid rgba(87,199,255,0.14)"}}>{(a.source||"SPACE").toUpperCase()}</span>
-                      <span style={{fontSize:8,color:"rgba(255,255,255,0.18)",fontFamily:"'IBM Plex Mono',monospace"}}>{a.published}</span>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,0.78)",lineHeight:1.42,letterSpacing:"-0.01em",marginBottom:5}}>{a.title}</div>
-                    {a.summary&&<div style={{fontSize:10.5,color:"rgba(255,255,255,0.28)",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.summary}</div>}
-                    <div style={{marginTop:8,fontSize:9,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>Leer más →</div>
-                  </div>
-                </a>
-              ))}
+            {/* ── COL 3: Observation sidebar (desktop only) ── */}
+            <div className="news-col">
+              <ObservationSidebar
+                sat={sat}
+                next={next}
+                userLat={userCity !== "tu ciudad" ? undefined : SANTIAGO.lat}
+                userLon={userCity !== "tu ciudad" ? undefined : SANTIAGO.lon}
+              />
             </div>
           </div>
 
