@@ -402,8 +402,27 @@ export default function App() {
   const [alertPermission, setAlertPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "default");
   const [activeSection, setActiveSection]   = useState("passes"); // "passes" | "news"
   const alertTimers = useRef([]);
+  const [userCity, setUserCity]             = useState("tu ciudad");
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+
+  // Geolocalización: detecta la ciudad del usuario al cargar
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`)
+          .then(r => r.json())
+          .then(d => {
+            const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad";
+            setUserCity(city);
+          })
+          .catch(() => {});
+      },
+      () => {}
+    );
+  }, []);
+
 
   const scheduleAlerts = useCallback((passList, sat, minutes) => {
     alertTimers.current.forEach(t => clearTimeout(t));
@@ -758,22 +777,42 @@ export default function App() {
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
-                Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
+              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:24}}>
+                Pases calculados en tiempo real sobre {userCity}. Satélites locales, estaciones espaciales internacionales y más.
               </p>
 
-              {/* Next pass — full card desktop, compact strip mobile */}
-              {next && (
-                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%"}}>
+              {/* ── COUNTDOWN al próximo pase ── */}
+              {next ? (
+                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%",marginBottom:8}}>
+                  {/* Bloque ciudad + hora */}
                   <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
-                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · Chile</div>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>
+                      {sat.name} pasa sobre {userCity}
+                    </div>
+                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>
+                      {fmtTime(next.rise)}
+                    </div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>
+                      {fmtDate(next.rise)} · {next.visible ? "👁 visible a simple vista" : "con binoculares"}
+                    </div>
                   </div>
-                  <div style={{padding:"14px 20px"}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
+                  {/* Bloque countdown */}
+                  <div style={{padding:"14px 20px",minWidth:130}}>
+                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>
+                      en
+                    </div>
+                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.04em",fontVariantNumeric:"tabular-nums"}}>
+                      {countdown(next.rise) || "—"}
+                    </div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>
+                      Máx {next.max_el}° elevación
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{display:"inline-flex",alignItems:"center",gap:12,padding:"14px 20px",borderRadius:16,...glass({}),marginBottom:8}}>
+                  <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:"rgba(255,255,255,0.3)"}}>
+                    Calculando próximo pase sobre {userCity}...
                   </div>
                 </div>
               )}
