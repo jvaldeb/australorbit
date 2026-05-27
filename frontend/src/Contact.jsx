@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "./usePageMeta.js";
 
 const API = "https://australorbit-production.up.railway.app";
 
@@ -12,6 +13,12 @@ const glass = (extra = {}) => ({
 });
 
 export default function Contact() {
+  usePageMeta({
+    title:       "Contacto",
+    description: "¿Tienes sugerencias para Austral Orbit? Escríbenos. Construimos la plataforma espacial del hemisferio sur.",
+    url:         "https://australorbit.com/contacto",
+  });
+
   const [form, setForm]         = useState({ name: "", email: "", message: "" });
   const [status, setStatus]     = useState(null);
   const [logoError, setLogoError] = useState(false);

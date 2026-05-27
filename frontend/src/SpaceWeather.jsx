@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-
-const pad = n => String(n).padStart(2, "0");
+import { usePageMeta } from "./usePageMeta.js";
 
 function CosmicBg({ kp }) {
   const aurora = kp >= 5;
@@ -136,6 +135,12 @@ function Nav({ logoError, setLogoError, menuOpen, setMenuOpen, activePath, accen
 }
 
 export default function SpaceWeather() {
+  usePageMeta({
+    title:       "Clima espacial y aurora austral hoy",
+    description: "Índice Kp actual, viento solar y probabilidad de aurora austral visible desde Chile. Datos en tiempo real de NOAA.",
+    url:         "https://australorbit.com/espacio",
+  });
+
   const [kp, setKp]               = useState(null);
   const [kpHistory, setKpHistory] = useState([]);
   const [wind, setWind]           = useState(null);

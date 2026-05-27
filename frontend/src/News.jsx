@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePageMeta } from "./usePageMeta.js";
 
 const API = "https://australorbit-production.up.railway.app";
 
@@ -20,6 +21,12 @@ const LINKS = [
 ];
 
 export default function News() {
+  usePageMeta({
+    title:       "Noticias espaciales en español",
+    description: "Las últimas noticias del espacio traducidas al español. NASA, SpaceX, ESA y exploración espacial desde una perspectiva latinoamericana.",
+    url:         "https://australorbit.com/noticias",
+  });
+
   const [news, setNews]           = useState([]);
   const [loading, setLoading]     = useState(true);
   const [logoError, setLogoError] = useState(false);

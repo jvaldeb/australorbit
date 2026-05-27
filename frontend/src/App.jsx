@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePageMeta } from "./usePageMeta.js";
 
 /* ─────────────────────────────────────────────
    SATELLITE REGISTRY
@@ -376,6 +377,12 @@ function NotifBanner({ next, sat, onDismiss }) {
    MAIN APP
 ───────────────────────────────────────────── */
 export default function App() {
+  usePageMeta({
+    title:       "Rastreo de satélites en tiempo real",
+    description: "Sigue la ISS, satélites chilenos y eventos espaciales en vivo desde Chile. Próximos pases, posición en tiempo real y clima espacial.",
+    url:         "https://australorbit.com",
+  });
+
   const [sat, setSat]                       = useState(SATS[0]);
   const [passes, setPasses]                 = useState([]);
   const [pos, setPos]                       = useState(null);

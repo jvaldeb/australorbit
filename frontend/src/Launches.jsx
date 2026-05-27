@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-
-const API = "https://australorbit-production.up.railway.app";
-const pad = n => String(n).padStart(2, "0");
+import { usePageMeta } from "./usePageMeta.js";
 
 function CosmicBg() {
   return (
@@ -178,6 +176,12 @@ function Nav({ logoError, setLogoError, menuOpen, setMenuOpen, activePath }) {
 }
 
 export default function Launches() {
+  usePageMeta({
+    title:       "Próximos lanzamientos espaciales",
+    description: "Calendario de lanzamientos espaciales globales con countdown en tiempo real. SpaceX, NASA, ESA y más — desde la perspectiva del hemisferio sur.",
+    url:         "https://australorbit.com/lanzamientos",
+  });
+
   const [launches, setLaunches]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
