@@ -22,14 +22,51 @@ app.add_middleware(
 SANTIAGO = wgs84.latlon(-33.4489, -70.6693, elevation_m=570)
 
 SATELLITE_IDS = {
-    "ISS":     25544,
-    "HST":     20580,
-    "TIANGONG":48274,
-    "SSOT":    38011,
-    "LEMU":    60532,
-    "SUCHAI2": 57757,
-    "SUCHAI3": 57758,
+    # ── GLOBALES ──────────────────────────────────────
+    "ISS":       25544,   # Estacion Espacial Internacional
+    "HST":       20580,   # Hubble Space Telescope
+    "TIANGONG":  48274,   # Estacion Espacial China
+    "STARLINK":  44713,   # Starlink (representativo)
+
+    # ── CHILE 🇨🇱 ──────────────────────────────────────
+    "SSOT":      38011,   # FASat-Charlie / SSOT
+    "LEMU":      60532,   # LEMU NGE (privado)
+    "SUCHAI2":   57757,   # SUCHAI-2 (U. de Chile)
+    "SUCHAI3":   57758,   # SUCHAI-3 (U. de Chile)
+    "PLANTSAT":  52188,   # PlantSat (U. de Chile)
+
+    # ── ARGENTINA 🇦🇷 ──────────────────────────────────
+    "ARSAT1":    40272,   # ARSAT-1 (GEO, posicion fija)
+    "ARSAT2":    40941,   # ARSAT-2 (GEO, posicion fija)
+
+    # ── BRASIL 🇧🇷 ─────────────────────────────────────
+    "AMAZONIA1": 47699,   # Amazonia-1 (observacion terrestre)
+    "SGDC":      42692,   # SGDC-1 (GEO, defensa/comunicaciones)
+
+    # ── MEXICO 🇲🇽 ─────────────────────────────────────
+    "MORELOS3":  41036,   # Morelos-3 (GEO, telecomunicaciones)
+
+    # ── BOLIVIA 🇧🇴 ────────────────────────────────────
+    "TUPAC":     39217,   # Tupac Katari (GEO, telecomunicaciones)
+
+    # ── VENEZUELA 🇻🇪 ──────────────────────────────────
+    "VENESAT":   33410,   # VENESAT-1 Simon Bolivar (GEO)
+
+    # ── PERU 🇵🇪 ───────────────────────────────────────
+    "PERUSAT1":  41818,   # PeruSAT-1 (observacion terrestre)
+
+    # ── COLOMBIA 🇨🇴 ───────────────────────────────────
+    "LIBERTAD1": 31128,   # Libertad-1 (reingreso 2008, historico)
+
+    # ── ECUADOR 🇪🇨 ────────────────────────────────────
+    "PEGASO":    38760,   # NEE-01 Pegaso (reingreso, historico)
 }
+
+# Satelites GEO — orbita fija, no generan pases visibles desde tierra
+GEO_SATS = {"ARSAT1", "ARSAT2", "SGDC", "MORELOS3", "TUPAC", "VENESAT"}
+
+# Satelites historicos que ya reingresaron — solo informacion, sin TLE activo
+REINGRESED_SATS = {"LIBERTAD1", "PEGASO"}
 
 # TLE sources — se prueban en orden hasta que una funcione
 def tle_urls(norad_id):
@@ -207,12 +244,15 @@ def _preload_all_tles():
 
 # ── Pass calculation ─────────────────────────────────────────────────────────
 
-def _compute_passes(sat_id: str, days: int, result: list):
+def _compute_passes(sat_id: str, days: int, result: list, user_lat: float = -33.4489, user_lon: float = -70.6693):
     try:
         sat = get_satellite(sat_id)
         if not sat:
             result.append({"error": "No se pudo cargar el satélite"})
             return
+
+        # Ubicación del usuario (por defecto Santiago)
+        observer = wgs84.latlon(user_lat, user_lon, elevation_m=0)
 
         ahora = datetime.now(timezone.utc)
         t0 = ts.from_datetime(ahora)
@@ -220,12 +260,12 @@ def _compute_passes(sat_id: str, days: int, result: list):
         t1 = ts.from_datetime(ahora + timedelta(days=search_days))
         min_el = 5.0 if sat_id in LOW_INCL_SATS else 10.0
 
-        tiempos, eventos = sat.find_events(SANTIAGO, t0, t1, altitude_degrees=min_el)
+        tiempos, eventos = sat.find_events(observer, t0, t1, altitude_degrees=min_el)
 
         passes, pase = [], {}
         for t, evento in zip(tiempos, eventos):
             dt = t.utc_datetime()
-            dif = (sat - SANTIAGO).at(t)
+            dif = (sat - observer).at(t)
             alt, az, dist = dif.altaz()
             if evento == 0:
                 pase = {"rise": dt.isoformat(), "rise_az": float(round(az.degrees, 1))}
@@ -234,7 +274,6 @@ def _compute_passes(sat_id: str, days: int, result: list):
                 pase["max_el"] = float(round(alt.degrees, 1))
                 pase["max_az"] = float(round(az.degrees, 1))
             elif evento == 2:
-                # Ignorar pases incompletos (satélite ya estaba sobre horizonte)
                 if "rise" not in pase or "max" not in pase:
                     pase = {}
                     continue
@@ -246,22 +285,21 @@ def _compute_passes(sat_id: str, days: int, result: list):
                 passes.append(pase)
                 pase = {}
 
-        result.append({"satellite": sat_id, "passes": passes})
+        result.append({"satellite": sat_id, "passes": passes,
+                        "observer": {"lat": user_lat, "lon": user_lon}})
 
     except Exception as e:
         print(f"[PASSES] Error {sat_id}: {e}")
         result.append({"error": str(e)})
 
 
-def get_passes(sat_id: str, days: int = 3):
+def get_passes(sat_id: str, days: int = 3, user_lat: float = -33.4489, user_lon: float = -70.6693):
     if sat_id not in SATELLITE_IDS:
         return {"error": "Satélite no encontrado"}
 
-    # If TLE already cached, calculation is fast — no thread needed for timeout
-    # Still use thread to protect against edge-case hangs
     timeout_sec = 30 if sat_id in LOW_INCL_SATS else 25
     result = []
-    t = threading.Thread(target=_compute_passes, args=(sat_id, days, result))
+    t = threading.Thread(target=_compute_passes, args=(sat_id, days, result, user_lat, user_lon))
     t.start()
     t.join(timeout=timeout_sec)
 
@@ -279,7 +317,7 @@ def get_passes(sat_id: str, days: int = 3):
 
 # ── Position ─────────────────────────────────────────────────────────────────
 
-def get_position(sat_id: str):
+def get_position(sat_id: str, user_lat: float = -33.4489, user_lon: float = -70.6693):
     if sat_id not in SATELLITE_IDS:
         return {"error": "Satélite no encontrado"}
     sat = get_satellite(sat_id)
@@ -288,8 +326,10 @@ def get_position(sat_id: str):
     t = ts.now()
     geocentric = sat.at(t)
     subpoint   = wgs84.subpoint(geocentric)
-    dif        = (sat - SANTIAGO).at(t)
+    observer   = wgs84.latlon(user_lat, user_lon, elevation_m=0)
+    dif        = (sat - observer).at(t)
     alt, az, dist = dif.altaz()
+    # Mantener compatibilidad con campo "from_santiago" pero calculado desde usuario
     return {
         "satellite": sat_id,
         "lat":       float(round(subpoint.latitude.degrees, 4)),
@@ -299,6 +339,8 @@ def get_position(sat_id: str):
         "azimuth_from_santiago":   float(round(az.degrees, 1)),
         "distance_km":             float(round(dist.km, 0)),
         "visible_from_santiago":   bool(alt.degrees > 0),
+        "observer_lat": user_lat,
+        "observer_lon": user_lon,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -388,12 +430,45 @@ def root():
     return {"status": "AustralOrbit API funcionando 🛰️"}
 
 @app.get("/passes/{sat_id}")
-def passes(sat_id: str, days: int = 3):
-    return get_passes(sat_id.upper(), days)
+def passes(sat_id: str, days: int = 3, lat: float = -33.4489, lon: float = -70.6693):
+    sid = sat_id.upper()
+    # Satelites GEO — no tienen pases visibles desde tierra
+    if sid in GEO_SATS:
+        return {"satellite": sid, "passes": [], "type": "GEO",
+                "message": "Satelite geoestacionario — orbita fija, no genera pases visibles desde tierra"}
+    # Satelites historicos que ya reingresaron
+    if sid in REINGRESED_SATS:
+        return {"satellite": sid, "passes": [], "type": "REINGRESED",
+                "message": "Satelite historico — ya reingreso a la atmosfera, sin TLE activo"}
+    return get_passes(sid, days, user_lat=lat, user_lon=lon)
 
 @app.get("/position/{sat_id}")
-def position(sat_id: str):
-    return get_position(sat_id.upper())
+def position(sat_id: str, lat: float = -33.4489, lon: float = -70.6693):
+    sid = sat_id.upper()
+    # Satelites GEO — posicion fija aproximada sobre el ecuador
+    if sid in GEO_SATS:
+        geo_lons = {
+            "ARSAT1": -71.8, "ARSAT2": -81.0,
+            "SGDC": -75.0, "MORELOS3": -116.8,
+            "TUPAC": -87.2, "VENESAT": -78.0,
+        }
+        lon = geo_lons.get(sid, -75.0)
+        return {
+            "satellite": sid, "type": "GEO",
+            "lat": 0.0, "lon": lon,
+            "alt_km": 35786,
+            "speed_kmh": 3070,
+            "visible_from_santiago": False,
+            "elevation_from_santiago": -90,
+            "azimuth_from_santiago": 0,
+            "distance_km": 35786,
+            "message": f"Orbita geoestacionaria fija — {lon}° W"
+        }
+    # Satelites historicos
+    if sid in REINGRESED_SATS:
+        return {"satellite": sid, "type": "REINGRESED",
+                "message": "Ya reingreso a la atmosfera"}
+    return get_position(sid)
 
 @app.get("/news")
 async def news():

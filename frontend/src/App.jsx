@@ -40,10 +40,93 @@ const SATS = [
     orbit:"550 km", speed:"27,400 km/h", norad:57758,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
     specs:[["NORAD ID","57758"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],["Período orbital","95.6 min"],["Misión","Monitoreo forestal"],["País","🇨🇱 Chile"]]},
+
+  // ── ARGENTINA 🇦🇷 ─────────────────────────────────────────────
+  { id:"ARSAT1", name:"ARSAT-1", full:"Satélite Geoestacionario Argentino", color:"#60a5fa",
+    country:"Argentina", flag:"🇦🇷", icon:"📺", chilean:false,
+    desc:"Primer satélite de telecomunicaciones diseñado y fabricado en Argentina por INVAP. Da TV, internet y telefonía.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:40272,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","40272"],["Lanzamiento","16 Oct 2014"],["Fabricante","INVAP Argentina"],["Operador","ARSAT"],["Órbita","71.8° W GEO"],["Masa","2,900 kg"],["Transponders","24 Ku-band"],["País","🇦🇷 Argentina"]]},
+  { id:"ARSAT2", name:"ARSAT-2", full:"Satélite Geoestacionario Argentino 2", color:"#93c5fd",
+    country:"Argentina", flag:"🇦🇷", icon:"📡", chilean:false,
+    desc:"Segundo satélite geoestacionario argentino. Cubre Argentina, Chile, Uruguay, Paraguay y llega a Norteamérica.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:40941,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","40941"],["Lanzamiento","30 Sep 2015"],["Fabricante","INVAP Argentina"],["Operador","ARSAT"],["Órbita","81° W GEO"],["Banda","Ku + C"],["País","🇦🇷 Argentina"]]},
+
+  // ── BRASIL 🇧🇷 ────────────────────────────────────────────────
+  { id:"AMAZONIA1", name:"Amazonia-1", full:"Satélite de Observación Amazónica", color:"#4ade80",
+    country:"Brasil", flag:"🇧🇷", icon:"🌳", chilean:false,
+    desc:"Primer satélite completamente desarrollado en Brasil. Monitorea la deforestación amazónica con cámara multiespectral.",
+    orbit:"752 km · SSO", speed:"26,900 km/h", norad:47699,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","47699"],["Lanzamiento","28 Feb 2021"],["Agencia","INPE Brasil"],["Órbita","752 km SSO"],["Misión","Monitoreo Amazonas"],["Resolución","60 m"],["País","🇧🇷 Brasil"]]},
+  { id:"SGDC", name:"SGDC-1", full:"Satélite Geoestacionario de Defensa y Comunicaciones", color:"#86efac",
+    country:"Brasil", flag:"🇧🇷", icon:"🛡️", chilean:false,
+    desc:"Satélite geoestacionario de Brasil para defensa nacional y comunicaciones civiles.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:42692,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","42692"],["Lanzamiento","4 May 2017"],["Operador","Telebras / FAB"],["Órbita","75° W GEO"],["Masa","6,000 kg"],["País","🇧🇷 Brasil"]]},
+
+  // ── MÉXICO 🇲🇽 ────────────────────────────────────────────────
+  { id:"MORELOS3", name:"Morelos-3", full:"Satélite Mexicano de Telecomunicaciones", color:"#fbbf24",
+    country:"México", flag:"🇲🇽", icon:"📶", chilean:false,
+    desc:"Satélite de telecomunicaciones de México fabricado por Boeing. Da conectividad a zonas remotas y rurales.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:41036,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","41036"],["Lanzamiento","2 Oct 2015"],["Operador","SCT México"],["Fabricante","Boeing"],["Órbita","116.8° W GEO"],["Banda","Ku + Ka"],["País","🇲🇽 México"]]},
+
+  // ── BOLIVIA 🇧🇴 ───────────────────────────────────────────────
+  { id:"TUPAC", name:"Túpac Katari", full:"Satélite Boliviano de Telecomunicaciones", color:"#f97316",
+    country:"Bolivia", flag:"🇧🇴", icon:"🌐", chilean:false,
+    desc:"Primer y único satélite de Bolivia. Lleva el nombre del líder indígena aimara Túpac Katari. Da TV e internet rural.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:39217,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","39217"],["Lanzamiento","20 Dic 2013"],["Fabricante","CAST China"],["Operador","ABE Bolivia"],["Órbita","87.2° W GEO"],["Masa","5,100 kg"],["País","🇧🇴 Bolivia"]]},
+
+  // ── VENEZUELA 🇻🇪 ─────────────────────────────────────────────
+  { id:"VENESAT", name:"VENESAT-1", full:"Satélite Simón Bolívar", color:"#ef4444",
+    country:"Venezuela", flag:"🇻🇪", icon:"📡", chilean:false,
+    desc:"Primer satélite venezolano, bautizado Simón Bolívar. Fabricado en China, provee TV y telefonía a Venezuela y LATAM.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:33410,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","33410"],["Lanzamiento","29 Oct 2008"],["Fabricante","CAST China"],["Operador","ABAE"],["Órbita","78° W GEO"],["Banda","C + Ku + Ka"],["País","🇻🇪 Venezuela"]]},
+
+  // ── PERÚ 🇵🇪 ──────────────────────────────────────────────────
+  { id:"PERUSAT1", name:"PerúSAT-1", full:"Satélite Peruano de Observación Terrestre", color:"#f87171",
+    country:"Perú", flag:"🇵🇪", icon:"🦅", chilean:false,
+    desc:"Satélite de observación de alta resolución de Perú. Combate minería ilegal, deforestación y corrupción.",
+    orbit:"670 km · SSO", speed:"27,100 km/h", norad:41818,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","41818"],["Lanzamiento","16 Sep 2016"],["Fabricante","Airbus DS"],["Operador","CONIDA"],["Resolución","0.7 m"],["País","🇵🇪 Perú"]]},
+
+  // ── COLOMBIA 🇨🇴 ──────────────────────────────────────────────
+  { id:"LIBERTAD1", name:"Libertad-1", full:"Primer Satélite Colombiano", color:"#fde047",
+    country:"Colombia", flag:"🇨🇴", icon:"🛰️", chilean:false,
+    desc:"Primer satélite de Colombia. CubeSat 1U de la Universidad Sergio Arboleda. Operó brevemente en 2007.",
+    orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:31128,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","31128"],["Lanzamiento","17 Abr 2007"],["Universidad","Sergio Arboleda"],["Tipo","CubeSat 1U"],["Estado","Reingresó 2008"],["País","🇨🇴 Colombia"]]},
+
+  // ── ECUADOR 🇪🇨 ───────────────────────────────────────────────
+  { id:"PEGASO", name:"NEE-01 Pegaso", full:"Primer Nanosatélite Ecuatoriano", color:"#a3e635",
+    country:"Ecuador", flag:"🇪🇨", icon:"🦅", chilean:false,
+    desc:"Primer satélite ecuatoriano. CubeSat de la Fundación EXA. Transmitió imágenes y audio en vivo desde el espacio.",
+    orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:38760,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","38760"],["Lanzamiento","26 Abr 2013"],["Organización","Fundación EXA"],["Tipo","CubeSat"],["País","🇪🇨 Ecuador"]]},
+
+  // ── ESPECIALES ────────────────────────────────────────────────
+  { id:"STARLINK", name:"Starlink", full:"Constelación Starlink de SpaceX", color:"#e2e8f0",
+    country:"SpaceX", flag:"🚀", icon:"✦", chilean:false,
+    desc:"Constelación de más de 6,000 satélites de SpaceX. El objeto más visto en el cielo nocturno — pasan en trenes de luces.",
+    orbit:"550 km", speed:"27,400 km/h", norad:44713,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD (ejemplo)","44713"],["Desde","2019"],["Operador","SpaceX"],["Constelación","+6,000 sats"],["Órbita","540–570 km"],["Inclinación","53°"]]},
 ];
 
 const COUNTRIES = [
-  { id:"all",     label:"Todos",     flag:"🌍" },
   { id:"global",  label:"Globales",  flag:"🚀" },
   { id:"CL",      label:"Chile",     flag:"🇨🇱" },
   { id:"AR",      label:"Argentina", flag:"🇦🇷" },
@@ -51,8 +134,8 @@ const COUNTRIES = [
   { id:"MX",      label:"México",    flag:"🇲🇽" },
   { id:"BO",      label:"Bolivia",   flag:"🇧🇴" },
   { id:"VE",      label:"Venezuela", flag:"🇻🇪" },
-  { id:"CO",      label:"Colombia",  flag:"🇨🇴" },
   { id:"PE",      label:"Perú",      flag:"🇵🇪" },
+  { id:"CO",      label:"Colombia",  flag:"🇨🇴" },
   { id:"EC",      label:"Ecuador",   flag:"🇪🇨" },
   { id:"special", label:"Especiales",flag:"✦"  },
 ];
@@ -61,12 +144,12 @@ const COUNTRY_MAP = {
   ISS:"global", HST:"global", TIANGONG:"global",
   SSOT:"CL", LEMU:"CL", SUCHAI2:"CL", SUCHAI3:"CL",
   ARSAT1:"AR", ARSAT2:"AR",
-  SGDC:"BR", AMAZONIA1:"BR",
+  AMAZONIA1:"BR", SGDC:"BR",
   MORELOS3:"MX",
   TUPAC:"BO",
   VENESAT:"VE",
-  LIBERTAD1:"CO",
   PERUSAT1:"PE",
+  LIBERTAD1:"CO",
   PEGASO:"EC",
   STARLINK:"special",
 };
@@ -238,10 +321,10 @@ function buildFullOrbit(lat, lon, inc, period) {
   return pts;
 }
 
-function Globe({ sat, pos }) {
+function Globe({ sat, pos, userLat = -15, userLon = -65 }) {
   const W = 280, H = 280, R = 120, cx = 140, cy = 140;
   // Centrado en Latinoamérica: lat -15, lon -65
-  const cLat = -15, cLon = -65;
+  const cLat = userLat, cLon = userLon;
 
   const orb  = SAT_ORB[sat.id] || { inc: 51.6, period: 92.9 };
   const sLat = pos?.lat ?? -15;
@@ -278,7 +361,7 @@ function Globe({ sat, pos }) {
   // Posición actual del satélite
   const satProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
   // Santiago
-  const stProj   = ortho(SANTIAGO.lat, SANTIAGO.lon, cLat, cLon, R, cx, cy);
+  const stProj   = ortho(userLat, userLon, cLat, cLon, R, cx, cy);
   // Punto subsatelital (nadir en la superficie)
   const nadProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
 
@@ -372,7 +455,7 @@ function Globe({ sat, pos }) {
             <circle cx={stProj.x} cy={stProj.y} r={8} fill="none" stroke="#ff4d6d" strokeWidth="0.7" opacity="0.3"/>
             <circle cx={stProj.x} cy={stProj.y} r={2.8} fill="#ff4d6d"/>
             <text x={stProj.x+6} y={stProj.y-4} fontSize="7" fill="#ff4d6d"
-              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">Santiago</text>
+              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">Tú</text>
           </g>
         )}
 
@@ -1215,7 +1298,7 @@ export default function App() {
   });
 
   const [sat, setSat]                       = useState(SATS[0]);
-  const [countryFilter, setCountryFilter]   = useState("all");
+  const [countryFilter, setCountryFilter]   = useState("global");
   const [passes, setPasses]                 = useState([]);
   const [pos, setPos]                       = useState(null);
   const [news, setNews]                     = useState([]);
@@ -1515,7 +1598,6 @@ export default function App() {
           {menuOpen && (
             <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
               <a href="/" className="active">Rastreo</a>
-              <a href="/satelites-chilenos">Satélites 🇨🇱</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
               <a href="/noticias">Noticias</a>
@@ -1646,57 +1728,65 @@ export default function App() {
 
           {/* Separator */}
           <div style={{height:1,background:`linear-gradient(90deg, transparent, ${sat.color}35, transparent)`,transition:"background 0.6s",marginBottom:0}}/>
+
           {/* ── SAT PICKER ── */}
           <div style={{padding:"20px 0 16px"}}>
-            {/* Fila 1: filtro por país/región */}
+
+            {/* Fila 1: filtro por país */}
             <div style={{display:"flex",alignItems:"center",gap:6,overflowX:"auto",paddingBottom:10,scrollbarWidth:"none",borderBottom:"1px solid rgba(255,255,255,0.04)",marginBottom:12}}>
               <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.15)",textTransform:"uppercase",flexShrink:0,marginRight:4}}>País</span>
               {COUNTRIES.map(c=>(
                 <button key={c.id}
-                  onClick={()=>{ setCountryFilter(c.id); const first=SATS.find(s=>c.id==="all"||(COUNTRY_MAP[s.id]===c.id)); if(first) setSat(first); }}
+                  onClick={()=>setCountryFilter(c.id)}
                   style={{
                     flexShrink:0, display:"flex", alignItems:"center", gap:4,
                     padding:"4px 10px", borderRadius:99,
-                    background:countryFilter===c.id?"rgba(255,255,255,0.08)":"transparent",
-                    border:`1px solid ${countryFilter===c.id?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.05)"}`,
-                    color:countryFilter===c.id?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.3)",
+                    background:countryFilter===c.id?"rgba(255,255,255,0.09)":"transparent",
+                    border:`1px solid ${countryFilter===c.id?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)"}`,
+                    color:countryFilter===c.id?"#fff":"rgba(255,255,255,0.3)",
                     fontFamily:"'IBM Plex Mono',monospace", fontSize:9, letterSpacing:"0.04em",
                     cursor:"pointer", transition:"all 0.2s",
                   }}>
-                  <span style={{fontSize:11}}>{c.flag}</span>
+                  <span style={{fontSize:12}}>{c.flag}</span>
                   <span>{c.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Fila 2: satélites del país seleccionado */}
-            <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,scrollbarWidth:"none"}}>
-              {SATS.filter(s=>countryFilter==="all"||(COUNTRY_MAP[s.id]===countryFilter)).map(s=>(
+            {/* Fila 2: satélites del país — solo aparecen al seleccionar un país */}
+            <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,scrollbarWidth:"none",flexWrap:"nowrap"}}>
+              {SATS.filter(s=>COUNTRY_MAP[s.id]===countryFilter).map(s=>(
                 <button key={s.id} className="sat-pill" onClick={()=>setSat(s)}
                   style={{
                     flexShrink:0, display:"flex", alignItems:"center", gap:6,
-                    padding:"7px 14px", borderRadius:10,
-                    background:sat.id===s.id?s.color+"12":"rgba(255,255,255,0.02)",
-                    border:`1px solid ${sat.id===s.id?s.color+"50":"rgba(255,255,255,0.06)"}`,
-                    color:sat.id===s.id?s.color:"rgba(255,255,255,0.4)",
-                    fontFamily:"'IBM Plex Mono',monospace", fontSize:10, letterSpacing:"0.04em",
-                    boxShadow:sat.id===s.id?`0 0 16px ${s.color}10`:"none",
+                    padding:"8px 16px", borderRadius:10,
+                    background:sat.id===s.id?s.color+"15":"rgba(255,255,255,0.03)",
+                    border:`1px solid ${sat.id===s.id?s.color+"55":"rgba(255,255,255,0.07)"}`,
+                    color:sat.id===s.id?s.color:"rgba(255,255,255,0.45)",
+                    fontFamily:"'IBM Plex Mono',monospace", fontSize:10.5, letterSpacing:"0.04em",
+                    boxShadow:sat.id===s.id?`0 0 18px ${s.color}12`:"none",
                     transition:"all 0.2s",
                   }}>
-                  <span style={{display:"block",width:5,height:5,borderRadius:"50%",flexShrink:0,background:sat.id===s.id?s.color:"rgba(255,255,255,0.12)",boxShadow:sat.id===s.id?`0 0 6px ${s.color}`:"none"}}/>
-                  <span>{s.name}</span>
+                  <span style={{display:"block",width:5,height:5,borderRadius:"50%",flexShrink:0,
+                    background:sat.id===s.id?s.color:"rgba(255,255,255,0.15)",
+                    boxShadow:sat.id===s.id?`0 0 6px ${s.color}`:"none"}}/>
+                  <span>{s.flag||""} {s.name}</span>
                   {s.orbit?.includes("GEO") && (
-                    <span style={{fontSize:7,padding:"1px 5px",borderRadius:4,background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.08)"}}>GEO</span>
+                    <span style={{fontSize:7,padding:"1px 5px",borderRadius:4,
+                      background:"rgba(255,255,255,0.05)",color:"rgba(255,255,255,0.2)",
+                      border:"1px solid rgba(255,255,255,0.07)"}}>GEO</span>
                   )}
                 </button>
               ))}
             </div>
 
-            {/* Nota para satélites GEO */}
+            {/* Info GEO */}
             {sat.orbit?.includes("GEO") && (
-              <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-                <span style={{fontSize:9,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)",letterSpacing:"0.06em"}}>
-                  ℹ {sat.name} es geoestacionario a 35,786 km — posición fija, no genera pases visibles desde tierra.
+              <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,
+                background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.04)"}}>
+                <span style={{fontSize:9,fontFamily:"'IBM Plex Mono',monospace",
+                  color:"rgba(255,255,255,0.2)"}}>
+                  ℹ {sat.name} es geoestacionario — posición fija a 35,786 km, no genera pases visibles.
                 </span>
               </div>
             )}
@@ -1760,7 +1850,7 @@ export default function App() {
               {/* Map container */}
               <div style={{borderRadius:18,...glass({}),padding:10,display:"flex",justifyContent:"center",position:"relative",minHeight:195,transition:"border-color 0.6s"}}>
                 {!pos&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:18,background:"rgba(0,0,0,0.75)",zIndex:2}}><span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:8.5,color:sat.color,letterSpacing:"0.14em",animation:"shimmer 1.5s ease infinite"}}>Cargando...</span></div>}
-                {mapTab==="globe"?<Globe sat={sat} pos={pos}/>:<ChileMap sat={sat} pos={pos}/>}
+                {mapTab==="globe"?<Globe sat={sat} pos={pos} userLat={userLat} userLon={userLon}/>:<ChileMap sat={sat} pos={pos} userLat={userLat} userLon={userLon}/>}
               </div>
 
               {/* Live data */}
@@ -1887,12 +1977,10 @@ export default function App() {
               {activeSection==="passes" && (
                 <div style={{marginBottom:16}}>
                   <h2 style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700,letterSpacing:"-0.02em",color:"#fff",lineHeight:1.2}}>
-                    {sat.orbit?.includes("GEO") ? "Información de " : "Pases de "}
+                    Pases de{" "}
                     <span style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s"}}>{sat.name}</span>
                   </h2>
-                  <div style={{fontSize:9.5,color:"rgba(255,255,255,0.2)",marginTop:4,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>
-                    {sat.orbit?.includes("GEO") ? `Satélite geoestacionario · ${sat.orbit} · posición fija` : "Santiago · próximos 3 días · elevación mín. 10°"}
-                  </div>
+                  <div style={{fontSize:9.5,color:"rgba(255,255,255,0.2)",marginTop:4,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
                 </div>
               )}
 
@@ -1909,56 +1997,10 @@ export default function App() {
               {/* PASSES SECTION */}
               {activeSection==="passes" && (
                 <>
-                  {/* Satélites GEO: mostrar ficha de información en lugar de pases */}
-                  {sat.orbit?.includes("GEO") ? (
-                    <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                      {/* Info card GEO */}
-                      <div style={{padding:"20px 22px",borderRadius:16,background:"rgba(255,255,255,0.025)",border:`1px solid ${sat.color}20`}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-                          <span style={{fontSize:24}}>{sat.icon}</span>
-                          <div>
-                            <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#fff"}}>{sat.full}</div>
-                            <div style={{fontSize:9,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.25)",marginTop:2,letterSpacing:"0.1em"}}>{sat.flag} {sat.country} · {sat.orbit}</div>
-                          </div>
-                        </div>
-                        <p style={{fontSize:13,color:"rgba(255,255,255,0.45)",lineHeight:1.7,marginBottom:16}}>{sat.desc}</p>
-                        {/* Specs */}
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:14}}>
-                          {sat.specs.map(([l,v])=>(
-                            <div key={l} style={{padding:"8px 10px",borderRadius:10,background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.04)"}}>
-                              <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)",letterSpacing:"0.1em",marginBottom:3}}>{l.toUpperCase()}</div>
-                              <div style={{fontSize:11,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.7)",fontWeight:500}}>{v}</div>
-                            </div>
-                          ))}
-                        </div>
-                        {/* Links */}
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <a href={`https://www.n2yo.com/satellite/?s=${sat.norad}`} target="_blank" rel="noopener noreferrer"
-                            style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:9,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",padding:"6px 12px",borderRadius:8,background:"rgba(87,199,255,0.06)",border:"1px solid rgba(87,199,255,0.16)",letterSpacing:"0.06em"}}>
-                            Rastrear en N2YO.com →
-                          </a>
-                          <a href={`https://www.heavens-above.com/`} target="_blank" rel="noopener noreferrer"
-                            style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace",textDecoration:"none",padding:"6px 12px",borderRadius:8,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",letterSpacing:"0.06em"}}>
-                            Heavens-Above →
-                          </a>
-                        </div>
-                      </div>
-                      {/* Nota explicativa */}
-                      <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-                        <div style={{fontSize:9,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)",letterSpacing:"0.1em",marginBottom:6}}>¿POR QUÉ NO TIENE PASES?</div>
-                        <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",lineHeight:1.7}}>
-                          Los satélites geoestacionarios orbitan a 35,786 km sobre el ecuador, sincronizados con la rotación de la Tierra. Parecen fijos en el cielo — no cruzan el horizonte como la ISS. Son invisibles a simple vista pero son los que transmiten tu señal de TV y telefonía satelital.
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:12,display:"inline-block",animation:"spinSlow 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.14em"}}>Calculando pases reales...</div></div>}
-                      {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed rgba(244,63,94,0.2)",borderRadius:16,background:"rgba(244,63,94,0.04)"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
-                      {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
-                      {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"rgba(255,255,255,0.15)",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
-                    </>
-                  )}
+                  {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:12,display:"inline-block",animation:"spinSlow 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.14em"}}>Calculando pases reales...</div></div>}
+                  {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed rgba(244,63,94,0.2)",borderRadius:16,background:"rgba(244,63,94,0.04)"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
+                  {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
+                  {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"rgba(255,255,255,0.15)",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
                 </>
               )}
 
