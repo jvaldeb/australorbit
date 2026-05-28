@@ -1339,6 +1339,16 @@ export default function App() {
 
         /* ── MOBILE ── */
         @media(max-width:600px){
+          /* Sat picker scroll horizontal suave */
+          .sat-picker-row{
+            overflow-x:auto!important;
+            flex-wrap:nowrap!important;
+            -webkit-overflow-scrolling:touch;
+            scrollbar-width:none;
+            padding-bottom:4px;
+            gap:6px!important;
+          }
+          .sat-picker-row::-webkit-scrollbar{display:none;}
           /* Nav: hide desktop sections, show hamburger */
           .nav-desktop-sections{display:none!important;}
           .nav-desktop-clock{display:none!important;}
@@ -1485,6 +1495,7 @@ export default function App() {
           {menuOpen && (
             <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
               <a href="/" className="active">Rastreo</a>
+              <a href="/satelites-chilenos">Satélites 🇨🇱</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
               <a href="/noticias">Noticias</a>
@@ -1500,7 +1511,7 @@ export default function App() {
             {/* Logo */}
             <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:52,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:44,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
                 :<span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AO</span>
               }
               <div>
@@ -1563,7 +1574,7 @@ export default function App() {
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
+              <p className="hero-description" style={{fontSize:14,color:"rgba(255,255,255,0.35)",lineHeight:1.7,fontWeight:300,maxWidth:420,marginBottom:20}}>
                 Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
               </p>
 
