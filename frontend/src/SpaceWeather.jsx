@@ -92,6 +92,7 @@ const AURORA_ZONES = [
 function Nav({ logoError, setLogoError, menuOpen, setMenuOpen, activePath, accentColor }) {
   const LINKS = [
     ["Rastreo",        "/"],
+  ["Satélites 🇨🇱",      "/satelites-chilenos"],
     ["Lanzamientos",   "/lanzamientos"],
     ["Clima espacial", "/espacio"],
     ["Noticias",       "/noticias"],

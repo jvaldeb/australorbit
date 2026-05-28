@@ -1485,6 +1485,7 @@ export default function App() {
           {menuOpen && (
             <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
               <a href="/" className="active">Rastreo</a>
+              <a href="/satelites-chilenos">Satélites 🇨🇱</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
               <a href="/noticias">Noticias</a>

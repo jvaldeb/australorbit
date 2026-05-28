@@ -13,11 +13,12 @@ const glass = (extra = {}) => ({
 });
 
 const LINKS = [
-  ["Rastreo",       "/"],
-  ["Lanzamientos",  "/lanzamientos"],
-  ["Clima espacial","/espacio"],
-  ["Noticias",      "/noticias"],
-  ["Contacto",      "/contacto"],
+  ["Rastreo",            "/"],
+  ["Satélites 🇨🇱",      "/satelites-chilenos"],
+  ["Lanzamientos",       "/lanzamientos"],
+  ["Clima espacial",     "/espacio"],
+  ["Noticias",           "/noticias"],
+  ["Contacto",           "/contacto"],
 ];
 
 export default function News() {

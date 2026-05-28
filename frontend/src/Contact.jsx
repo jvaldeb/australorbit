@@ -140,7 +140,7 @@ export default function Contact() {
               display:"flex",flexDirection:"column",gap:4,
               animation:"fadeUp 0.2s ease both",
             }}>
-              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
+              {[["Rastreo","/"],["Satélites 🇨🇱","/satelites-chilenos"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
                 <a key={href} href={href} style={{
                   fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:700,
                   color:href==="/contacto"?"#fff":"rgba(255,255,255,0.6)",
@@ -169,7 +169,7 @@ export default function Contact() {
             </div>
 
             <div className="nav-desktop-sections" style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
-              {[["Rastreo","/"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
+              {[["Rastreo","/"],["Satélites 🇨🇱","/satelites-chilenos"],["Lanzamientos","/lanzamientos"],["Clima espacial","/espacio"],["Noticias","/noticias"],["Contacto","/contacto"]].map(([label,href])=>(
                 <a key={href} href={href} className="nav-section-link"
                   style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",
                     color:href==="/contacto"?"#fff":"rgba(255,255,255,0.5)",

@@ -128,6 +128,7 @@ function LaunchCard({ launch, isNext }) {
 function Nav({ logoError, setLogoError, menuOpen, setMenuOpen, activePath }) {
   const LINKS = [
     ["Rastreo",         "/"],
+  ["Satélites 🇨🇱",      "/satelites-chilenos"],
     ["Lanzamientos",    "/lanzamientos"],
     ["Clima espacial",  "/espacio"],
     ["Noticias",        "/noticias"],
