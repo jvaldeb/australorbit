@@ -265,7 +265,7 @@ function OrbitalPlanet({ sat, pos }) {
             fill={sat.color + "15"} stroke={sat.color + "45"} strokeWidth="0.7"/>
           <text x="200" y="357" textAnchor="middle" fontSize="8.5"
             fill={sat.color} fontFamily="'IBM Plex Mono', monospace" letterSpacing="0.12em">
-            ● VISIBLE SOBRE SANTIAGO
+            ● VISIBLE
           </text>
         </g>
       )}
@@ -321,10 +321,10 @@ function buildFullOrbit(lat, lon, inc, period) {
   return pts;
 }
 
-function Globe({ sat, pos, userLat = -15, userLon = -65 }) {
+function Globe({ sat, pos }) {
   const W = 280, H = 280, R = 120, cx = 140, cy = 140;
   // Centrado en Latinoamérica: lat -15, lon -65
-  const cLat = userLat, cLon = userLon;
+  const cLat = -15, cLon = -65;
 
   const orb  = SAT_ORB[sat.id] || { inc: 51.6, period: 92.9 };
   const sLat = pos?.lat ?? -15;
@@ -361,7 +361,7 @@ function Globe({ sat, pos, userLat = -15, userLon = -65 }) {
   // Posición actual del satélite
   const satProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
   // Santiago
-  const stProj   = ortho(userLat, userLon, cLat, cLon, R, cx, cy);
+  const stProj   = ortho(SANTIAGO.lat, SANTIAGO.lon, cLat, cLon, R, cx, cy);
   // Punto subsatelital (nadir en la superficie)
   const nadProj  = ortho(sLat, sLon, cLat, cLon, R, cx, cy);
 
@@ -455,7 +455,7 @@ function Globe({ sat, pos, userLat = -15, userLon = -65 }) {
             <circle cx={stProj.x} cy={stProj.y} r={8} fill="none" stroke="#ff4d6d" strokeWidth="0.7" opacity="0.3"/>
             <circle cx={stProj.x} cy={stProj.y} r={2.8} fill="#ff4d6d"/>
             <text x={stProj.x+6} y={stProj.y-4} fontSize="7" fill="#ff4d6d"
-              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">Tú</text>
+              fontFamily="'IBM Plex Mono',monospace" fontWeight="600">Santiago</text>
           </g>
         )}
 
@@ -513,7 +513,7 @@ function Globe({ sat, pos, userLat = -15, userLon = -65 }) {
 /* ─────────────────────────────────────────────
    CHILE MAP — Leaflet con tiles satelitales Esri
 ───────────────────────────────────────────── */
-function ChileMap({ sat, pos }) {
+function ChileMap({ sat, pos, userLat = SANTIAGO.lat, userLon = SANTIAGO.lon }) {
   const mapRef = useRef(null);
   const leafletRef = useRef(null);
   const satMarkerRef = useRef(null);
@@ -536,7 +536,7 @@ function ChileMap({ sat, pos }) {
       }
 
       const map = L.map(el, {
-        center: [-33.4, -65],
+        center: [userLat, userLon],
         zoom: 3,
         zoomControl: false,
         attributionControl: false,
@@ -563,9 +563,9 @@ function ChileMap({ sat, pos }) {
         iconAnchor: [5, 5],
         className: '',
       });
-      L.marker([-33.45, -70.67], { icon: stIcon })
+      L.marker([userLat, userLon], { icon: stIcon })
         .addTo(map)
-        .bindTooltip('Santiago', { permanent: false, direction: 'right', className: 'sat-tooltip' });
+        .bindTooltip('Tú', { permanent: false, direction: 'right', className: 'sat-tooltip' });
 
       // Marcador satélite
       const satIcon = L.divIcon({
@@ -638,7 +638,7 @@ function ChileMap({ sat, pos }) {
         borderRadius: 6, border: `1px solid ${pos?.visible_from_santiago ? sat.color + "50" : "rgba(255,255,255,0.1)"}`,
         backdropFilter: "blur(8px)",
       }}>
-        {pos?.visible_from_santiago ? "✓ EN RANGO DE SANTIAGO" : "○ FUERA DE RANGO"}
+        {pos?.visible_from_santiago ? `✓ EN RANGO DE ${userCity?.toUpperCase() || "TU CIUDAD"}` : "○ FUERA DE RANGO"}
       </div>
       <style>{`
         .sat-tooltip { background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
@@ -806,7 +806,7 @@ function PassCard({ pass, sat, isNext }) {
             </div>
             {/* Boton compartir */}
             <button
-              onClick={e => { e.stopPropagation(); generateShareCard({ pass, sat, city: "Chile" }); }}
+              onClick={e => { e.stopPropagation(); generateShareCard({ pass, sat, city: userCity }); }}
               style={{
                 marginTop:12, display:"flex", alignItems:"center", gap:8,
                 padding:"10px 20px", borderRadius:12,
@@ -1239,7 +1239,7 @@ function NightMode({ pass, sat, onClose }) {
           </div>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
             <button
-              onClick={() => generateShareCard({ pass, sat, city:"Chile" })}
+              onClick={() => generateShareCard({ pass, sat, city: userCity })}
               style={{
                 padding:"14px 28px",borderRadius:14,
                 background:satColor,border:"none",
@@ -1299,6 +1299,9 @@ export default function App() {
 
   const [sat, setSat]                       = useState(SATS[0]);
   const [countryFilter, setCountryFilter]   = useState("global");
+  const [userLat, setUserLat]               = useState(SANTIAGO.lat);
+  const [userLon, setUserLon]               = useState(SANTIAGO.lon);
+  const [userCity, setUserCity]             = useState("Santiago");
   const [passes, setPasses]                 = useState([]);
   const [pos, setPos]                       = useState(null);
   const [news, setNews]                     = useState([]);
@@ -1322,6 +1325,21 @@ export default function App() {
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setUserLat(coords.latitude);
+        setUserLon(coords.longitude);
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`)
+          .then(r => r.json())
+          .then(d => setUserCity(d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad"))
+          .catch(() => {});
+      },
+      () => {}
+    );
+  }, []);
+
   const scheduleAlerts = useCallback((passList, sat, minutes) => {
     alertTimers.current.forEach(t => clearTimeout(t));
     alertTimers.current = [];
@@ -1333,7 +1351,7 @@ export default function App() {
       if (delay < 0) return;
       const t = setTimeout(() => {
         const mins = Math.round((riseMs - Date.now()) / 60000);
-        new Notification(`🛰 ${sat.name} pasa sobre Santiago`, {
+        new Notification(`🛰 ${sat.name} pasa sobre ${userCity}`, {
           body: `En ${mins} min · Máx: ${pass.max_el}° · ${pass.visible ? "👁 Visible a simple vista" : "Usa binoculares"}`,
           icon: "/logo.png", badge: "/logo.png", tag: `${sat.id}-${pass.rise}`,
         });
@@ -1357,16 +1375,16 @@ export default function App() {
 
   useEffect(() => {
     setLoading(true); setError(null); setPasses([]); setNotifDismissed(false); setFichaOpen(false);
-    fetch(`${API}/passes/${sat.id}`)
+    fetch(`${API}/passes/${sat.id}?lat=${userLat}&lon=${userLon}`)
       .then(r => r.json()).then(d => { setPasses(d.passes || []); setLoading(false); })
       .catch(() => { setError("No se pudo conectar al servidor."); setLoading(false); });
-  }, [sat]);
+  }, [sat, userLat, userLon]);
 
   useEffect(() => {
     setPos(null);
-    const go = () => fetch(`${API}/position/${sat.id}`).then(r => r.json()).then(setPos).catch(() => {});
+    const go = () => fetch(`${API}/position/${sat.id}?lat=${userLat}&lon=${userLon}`).then(r => r.json()).then(setPos).catch(() => {});
     go(); const t = setInterval(go, 5000); return () => clearInterval(t);
-  }, [sat]);
+  }, [sat, userLat, userLon]);
 
   useEffect(() => {
     setNewsLoading(true);
@@ -1621,7 +1639,7 @@ export default function App() {
                   <span style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AUSTRAL</span>
                   <span style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s"}}>Orbit</span>
                 </div>
-                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7,letterSpacing:"0.28em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginTop:1}}>Santiago · 33.4°S</div>
+                <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:7,letterSpacing:"0.28em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginTop:1}}>{userCity}</div>
               </div>
             </div>
 
@@ -1651,7 +1669,7 @@ export default function App() {
               {/* Clock — desktop only */}
               <div className="nav-desktop-clock" style={{textAlign:"right"}}>
                 <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:20,color:"#fff",letterSpacing:"0.04em",lineHeight:1}}>{`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`}</div>
-                <div style={{fontSize:7,color:"rgba(255,255,255,0.2)",letterSpacing:"0.2em",marginTop:1,fontFamily:"'IBM Plex Mono',monospace"}}>HORA CHILE</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.2)",letterSpacing:"0.2em",marginTop:1,fontFamily:"'IBM Plex Mono',monospace"}}>{userCity?.toUpperCase() || "HORA LOCAL"}</div>
               </div>
               {/* Hamburger — mobile only */}
               <button className={`nav-hamburger${menuOpen?" open":""}`} onClick={()=>setMenuOpen(o=>!o)} aria-label="Menú">
@@ -1677,7 +1695,7 @@ export default function App() {
               </h1>
 
               <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
-                Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
+                {`Pases calculados en tiempo real sobre ${userCity}. Satélites locales, estaciones espaciales internacionales y más.`}
               </p>
 
               {/* Next pass — full card desktop, compact strip mobile */}
@@ -1686,7 +1704,7 @@ export default function App() {
                   <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
                     <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
                     <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · Chile</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · {userCity}</div>
                   </div>
                   <div style={{padding:"14px 20px"}}>
                     <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
@@ -1878,7 +1896,7 @@ export default function App() {
                   </div>
                   <div style={{marginTop:9,padding:"8px 12px",borderRadius:10,background:pos.visible_from_santiago?sat.color+"0B":"rgba(0,0,0,0.3)",border:`1px solid ${pos.visible_from_santiago?sat.color+"22":"rgba(255,255,255,0.04)"}`}}>
                     <span style={{fontSize:10,color:pos.visible_from_santiago?sat.color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace"}}>
-                      {pos.visible_from_santiago?"✓ Sobre el horizonte de Santiago":"○ Bajo el horizonte de Santiago"}
+                      {pos.visible_from_santiago?`✓ Sobre el horizonte de ${userCity}`:`○ Bajo el horizonte de ${userCity}`}
                     </span>
                   </div>
                 </div>
@@ -1980,7 +1998,7 @@ export default function App() {
                     Pases de{" "}
                     <span style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s"}}>{sat.name}</span>
                   </h2>
-                  <div style={{fontSize:9.5,color:"rgba(255,255,255,0.2)",marginTop:4,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>Santiago · próximos 3 días · elevación mín. 10°</div>
+                  <div style={{fontSize:9.5,color:"rgba(255,255,255,0.2)",marginTop:4,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.04em"}}>{`${userCity} · próximos 3 días · elevación mín. 10°`}</div>
                 </div>
               )}
 
@@ -2032,8 +2050,8 @@ export default function App() {
               <ObservationSidebar
                 sat={sat}
                 next={next}
-                userLat={SANTIAGO.lat}
-                userLon={SANTIAGO.lon}
+                userLat={userLat}
+                userLon={userLon}
               />
             </div>
           </div>
