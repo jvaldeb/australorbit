@@ -1215,6 +1215,7 @@ export default function App() {
   });
 
   const [sat, setSat]                       = useState(SATS[0]);
+  const [countryFilter, setCountryFilter]   = useState("all");
   const [passes, setPasses]                 = useState([]);
   const [pos, setPos]                       = useState(null);
   const [news, setNews]                     = useState([]);
