@@ -5,42 +5,166 @@ import { usePageMeta } from "./usePageMeta.js";
    SATELLITE REGISTRY
 ───────────────────────────────────────────── */
 const SATS = [
-  { id:"ISS", name:"ISS", full:"Estación Espacial Internacional", color:"#57C7FF", chilean:false, flag:null, icon:"🏗️",
+  // ── EMBLEMÁTICOS GLOBALES ──────────────────────────────────────
+  { id:"ISS", name:"ISS", full:"Estación Espacial Internacional", color:"#57C7FF",
+    country:null, flag:null, icon:"🏗️", category:"global",
     desc:"Hogar permanente de astronautas desde el año 2000. Cruza Chile múltiples veces al día a 400 km de altitud.",
     orbit:"400 km", speed:"27,600 km/h", norad:25544,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/International_Space_Station_after_undocking_of_STS-132.jpg/1280px-International_Space_Station_after_undocking_of_STS-132.jpg",
-    specs:[["NORAD ID","25544"],["Lanzamiento","20 Nov 1998"],["Agencia","NASA / ESA / Roscosmos"],["Masa","420,000 kg"],["Tamaño","109 × 73 m"],["Inclinación","51.6°"],["Período orbital","92.9 min"],["Tripulación","6–7 personas"],["Tipo","Estación espacial"]]},
-  { id:"HST", name:"Hubble", full:"Telescopio Espacial Hubble", color:"#7DD9A8", chilean:false, flag:null, icon:"🔭",
+    specs:[["NORAD ID","25544"],["Lanzamiento","20 Nov 1998"],["Agencia","NASA / ESA / Roscosmos"],["Masa","420,000 kg"],["Tamaño","109 × 73 m"],["Inclinación","51.6°"],["Período orbital","92.9 min"],["Tripulación","6–7 personas"]]},
+  { id:"HST", name:"Hubble", full:"Telescopio Espacial Hubble", color:"#7DD9A8",
+    country:null, flag:null, icon:"🔭", category:"global",
     desc:"Más de 30 años fotografiando el universo desde 540 km. Ha producido sobre 1.5 millones de observaciones científicas.",
     orbit:"540 km", speed:"27,300 km/h", norad:20580,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/HST-SM4.jpeg/1280px-HST-SM4.jpeg",
-    specs:[["NORAD ID","20580"],["Lanzamiento","24 Abr 1990"],["Agencia","NASA / ESA"],["Masa","11,110 kg"],["Diámetro espejo","2.4 m"],["Inclinación","28.5°"],["Período orbital","95.4 min"],["Observaciones","+1.5 millones"],["Tipo","Telescopio espacial"]]},
-  { id:"TIANGONG", name:"Tiangong", full:"Estación Espacial China", color:"#F5C47A", chilean:false, flag:"🇨🇳", icon:"🏮",
-    desc:"Estación espacial modular china en expansión activa desde 2021. Módulo central Tianhe lanzado en abril de ese año.",
+    specs:[["NORAD ID","20580"],["Lanzamiento","24 Abr 1990"],["Agencia","NASA / ESA"],["Masa","11,110 kg"],["Diámetro espejo","2.4 m"],["Inclinación","28.5°"],["Período orbital","95.4 min"],["Observaciones","+1.5 millones"]]},
+  { id:"TIANGONG", name:"Tiangong", full:"Estación Espacial China", color:"#F5C47A",
+    country:"China", flag:"🇨🇳", icon:"🏮", category:"global",
+    desc:"Estación espacial modular china en expansión activa desde 2021.",
     orbit:"390 km", speed:"27,700 km/h", norad:48274,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Tiangong_space_station_2022.jpg/1280px-Tiangong_space_station_2022.jpg",
-    specs:[["NORAD ID","48274"],["Lanzamiento","29 Abr 2021"],["Agencia","CNSA"],["Masa","~100,000 kg"],["Módulos","3 (Tianhe + Wentian + Mengtian)"],["Inclinación","41.5°"],["Período orbital","91.6 min"],["Tripulación","3 personas"],["Tipo","Estación espacial"]]},
-  { id:"SSOT", name:"SSOT", full:"Satélite Chileno de Observación", color:"#C47B48", chilean:true, flag:"🇨🇱", icon:"📡",
-    desc:"Primer satélite de observación de Chile. Lanzado en 2011, captura imágenes de 1.45 m de resolución para cartografía y emergencias.",
+    specs:[["NORAD ID","48274"],["Lanzamiento","29 Abr 2021"],["Agencia","CNSA"],["Masa","~100,000 kg"],["Módulos","3"],["Inclinación","41.5°"],["Período orbital","91.6 min"],["Tripulación","3 personas"]]},
+
+  // ── CHILE 🇨🇱 ──────────────────────────────────────────────────
+  { id:"SSOT", name:"SSOT", full:"Satélite Chileno de Observación", color:"#C47B48",
+    country:"Chile", flag:"🇨🇱", icon:"📡", category:"latam", chilean:true,
+    desc:"Primer satélite de observación de Chile. Lanzado en 2011, captura imágenes de 1.45 m de resolución.",
     orbit:"628 km", speed:"27,200 km/h", norad:38011,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/SSOT_satellite.jpg/1280px-SSOT_satellite.jpg",
-    specs:[["NORAD ID","38011"],["Lanzamiento","16 Dic 2011"],["Agencia","FACH / EADS Astrium"],["Masa","~150 kg"],["Resolución","1.45 m"],["Inclinación","97.8°"],["Período orbital","97.1 min"],["Tipo","Observación terrestre"],["País","🇨🇱 Chile"]]},
-  { id:"LEMU", name:"LEMU NGE", full:"Primer Satélite Privado Chileno", color:"#6EE7B7", chilean:true, flag:"🇨🇱", icon:"🌲",
-    desc:"Primer satélite privado chileno. Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad con cámara hiperespectral.",
+    specs:[["NORAD ID","38011"],["Lanzamiento","16 Dic 2011"],["Agencia","FACH"],["Masa","117 kg"],["Resolución","1.45 m"],["Inclinación","97.8°"],["Período","97.1 min"],["País","🇨🇱 Chile"]]},
+  { id:"LEMU", name:"LEMU NGE", full:"Primer Satélite Privado Chileno", color:"#6EE7B7",
+    country:"Chile", flag:"🇨🇱", icon:"🌲", category:"latam", chilean:true,
+    desc:"Primer satélite privado chileno. Lanzado por SpaceX en agosto 2024. Monitorea biodiversidad.",
     orbit:"550 km", speed:"27,400 km/h", norad:60532,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/SpaceX_Transporter-11_mission_patch.png/800px-SpaceX_Transporter-11_mission_patch.png",
-    specs:[["NORAD ID","60532"],["Lanzamiento","16 Ago 2024"],["Empresa","Lemu (Chile)"],["Tipo sat.","CubeSat 6U"],["Sensor","Cámara hiperespectral"],["Inclinación","97.5°"],["Período orbital","95.6 min"],["Misión","Monitoreo biodiversidad"],["País","🇨🇱 Chile"]]},
-  { id:"SUCHAI2", name:"SUCHAI-2", full:"CubeSat Universidad de Chile", color:"#A78BFA", chilean:true, flag:"🇨🇱", icon:"🔬",
-    desc:"CubeSat científico desarrollado en la Universidad de Chile. Experimentos de plasma ionosférico en órbita baja.",
+    specs:[["NORAD ID","60532"],["Lanzamiento","16 Ago 2024"],["Empresa","Lemu SpaceTech"],["Tipo","CubeSat 6U"],["Sensor","Hiperespectral"],["Inclinación","97.5°"],["País","🇨🇱 Chile"]]},
+  { id:"SUCHAI2", name:"SUCHAI-2", full:"CubeSat Universidad de Chile", color:"#A78BFA",
+    country:"Chile", flag:"🇨🇱", icon:"🔬", category:"latam", chilean:true,
+    desc:"CubeSat científico de la Universidad de Chile. Monitorea contaminación lumínica sobre observatorios del norte.",
     orbit:"550 km", speed:"27,400 km/h", norad:57757,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
-    specs:[["NORAD ID","57757"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],["Período orbital","95.6 min"],["Misión","Plasma ionosférico"],["País","🇨🇱 Chile"]]},
-  { id:"SUCHAI3", name:"SUCHAI-3", full:"CubeSat Universidad de Chile", color:"#F472B6", chilean:true, flag:"🇨🇱", icon:"🌿",
-    desc:"Tercer CubeSat chileno. Monitoreo forestal y medioambiental desde órbita polar sincrónica al sol.",
+    specs:[["NORAD ID","57757"],["Lanzamiento","1 Abr 2022"],["Universidad","U. de Chile"],["Tipo","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],["País","🇨🇱 Chile"]]},
+  { id:"SUCHAI3", name:"SUCHAI-3", full:"CubeSat Universidad de Chile", color:"#F472B6",
+    country:"Chile", flag:"🇨🇱", icon:"🌿", category:"latam", chilean:true,
+    desc:"Tercer CubeSat chileno. Desplegó 2 femtosatélites propios. Monitoreo forestal desde órbita polar.",
     orbit:"550 km", speed:"27,400 km/h", norad:57758,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
-    specs:[["NORAD ID","57758"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],["Período orbital","95.6 min"],["Misión","Monitoreo forestal"],["País","🇨🇱 Chile"]]},
+    specs:[["NORAD ID","57758"],["Lanzamiento","1 Abr 2022"],["Universidad","U. de Chile"],["Tipo","CubeSat 3U + 2 femtosats"],["País","🇨🇱 Chile"]]},
+
+  // ── ARGENTINA 🇦🇷 ─────────────────────────────────────────────
+  { id:"ARSAT1", name:"ARSAT-1", full:"Satélite Geoestacionario Argentino", color:"#60a5fa",
+    country:"Argentina", flag:"🇦🇷", icon:"📺", category:"latam",
+    desc:"Primer satélite de telecomunicaciones diseñado y fabricado íntegramente en Argentina. Da TV, internet y telefonía a todo el país.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:40272,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","40272"],["Lanzamiento","16 Oct 2014"],["Fabricante","INVAP (Argentina)"],["Operador","ARSAT"],["Órbita","71.8° W GEO"],["Masa","2,900 kg"],["Transponders","24 Ku-band"],["País","🇦🇷 Argentina"]]},
+  { id:"ARSAT2", name:"ARSAT-2", full:"Satélite Geoestacionario Argentino 2", color:"#93c5fd",
+    country:"Argentina", flag:"🇦🇷", icon:"📡", category:"latam",
+    desc:"Segundo satélite geoestacionario argentino. Cubre Argentina, Chile, Uruguay, Paraguay y extiende servicios a Norteamérica.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:40941,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","40941"],["Lanzamiento","30 Sep 2015"],["Fabricante","INVAP (Argentina)"],["Operador","ARSAT"],["Órbita","81° W GEO"],["Banda","Ku + C"],["País","🇦🇷 Argentina"]]},
+
+  // ── BRASIL 🇧🇷 ────────────────────────────────────────────────
+  { id:"SGDC", name:"SGDC-1", full:"Satélite Geoestacionario de Defensa y Comunicaciones", color:"#4ade80",
+    country:"Brasil", flag:"🇧🇷", icon:"🛡️", category:"latam",
+    desc:"Satélite geoestacionario de Brasil para defensa y comunicaciones. Primer satélite brasileño de uso militar y civil.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:42692,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","42692"],["Lanzamiento","4 May 2017"],["Operador","Telebras / FAB"],["Órbita","75° W GEO"],["Masa","6,000 kg"],["Misión","Defensa y comunicaciones"],["País","🇧🇷 Brasil"]]},
+  { id:"AMAZONIA1", name:"Amazonia-1", full:"Satélite de Observación Amazónica", color:"#86efac",
+    country:"Brasil", flag:"🇧🇷", icon:"🌳", category:"latam",
+    desc:"Primer satélite completamente desarrollado en Brasil. Monitorea la deforestación amazónica con cámara multiespectral.",
+    orbit:"752 km · SSO", speed:"26,900 km/h", norad:47699,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","47699"],["Lanzamiento","28 Feb 2021"],["Agencia","INPE"],["Órbita","752 km SSO"],["Misión","Deforestación Amazonas"],["Resolución","60 m"],["País","🇧🇷 Brasil"]]},
+
+  // ── MÉXICO 🇲🇽 ────────────────────────────────────────────────
+  { id:"MORELOS3", name:"Morelos-3", full:"Satélite Mexicano de Telecomunicaciones", color:"#fbbf24",
+    country:"México", flag:"🇲🇽", icon:"📶", category:"latam",
+    desc:"Satélite de telecomunicaciones de México. Da conectividad a zonas remotas, áreas rurales y da soporte a emergencias.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:41036,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","41036"],["Lanzamiento","2 Oct 2015"],["Operador","SCT México"],["Fabricante","Boeing"],["Órbita","116.8° W GEO"],["Banda","Ku + Ka"],["País","🇲🇽 México"]]},
+
+  // ── BOLIVIA 🇧🇴 ───────────────────────────────────────────────
+  { id:"TUPAC", name:"Túpac Katari", full:"Satélite Boliviano de Telecomunicaciones", color:"#f97316",
+    country:"Bolivia", flag:"🇧🇴", icon:"🌐", category:"latam",
+    desc:"Primer y único satélite de Bolivia. Fabricado en China, lleva el nombre del líder indígena aimara. Da TV y acceso a internet a zonas rurales.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:39217,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","39217"],["Lanzamiento","20 Dic 2013"],["Fabricante","CAST (China)"],["Operador","ABE Bolivia"],["Órbita","87.2° W GEO"],["Masa","5,100 kg"],["País","🇧🇴 Bolivia"]]},
+
+  // ── VENEZUELA 🇻🇪 ─────────────────────────────────────────────
+  { id:"VENESAT", name:"VENESAT-1", full:"Satélite Simón Bolívar", color:"#ef4444",
+    country:"Venezuela", flag:"🇻🇪", icon:"📡", category:"latam",
+    desc:"Primer satélite venezolano. Lleva el nombre de Simón Bolívar. Fabricado en China, provee TV y telefonía a toda Venezuela y LATAM.",
+    orbit:"35,786 km GEO", speed:"3,070 km/h", norad:33410,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","33410"],["Lanzamiento","29 Oct 2008"],["Fabricante","CAST (China)"],["Operador","ABAE"],["Órbita","78° W GEO"],["Banda","C + Ku + Ka"],["País","🇻🇪 Venezuela"]]},
+
+  // ── COLOMBIA 🇨🇴 ──────────────────────────────────────────────
+  { id:"LIBERTAD1", name:"Libertad-1", full:"Primer Satélite Colombiano", color:"#fde047",
+    country:"Colombia", flag:"🇨🇴", icon:"🛰️", category:"latam",
+    desc:"Primer satélite de Colombia. CubeSat 1U desarrollado por la Universidad Sergio Arboleda. Operó brevemente en 2007.",
+    orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:31128,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","31128"],["Lanzamiento","17 Abr 2007"],["Universidad","Sergio Arboleda"],["Tipo","CubeSat 1U"],["Estado","Reingresó"],["País","🇨🇴 Colombia"]]},
+
+  // ── PERÚ 🇵🇪 ──────────────────────────────────────────────────
+  { id:"PERUSAT1", name:"PerúSAT-1", full:"Satélite Peruano de Observación", color:"#f87171",
+    country:"Perú", flag:"🇵🇪", icon:"🦅", category:"latam",
+    desc:"Satélite de observación de alta resolución de Perú. Usa sus imágenes para combatir minería ilegal, deforestación y corrupción.",
+    orbit:"670 km · SSO", speed:"27,100 km/h", norad:41818,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","41818"],["Lanzamiento","16 Sep 2016"],["Fabricante","Airbus DS"],["Operador","CONIDA"],["Resolución","0.7 m"],["Misión","Observación terrestre"],["País","🇵🇪 Perú"]]},
+
+  // ── ECUADOR 🇪🇨 ───────────────────────────────────────────────
+  { id:"PEGASO", name:"NEE-01 Pegaso", full:"Primer Nanosatélite Ecuatoriano", color:"#a3e635",
+    country:"Ecuador", flag:"🇪🇨", icon:"🦅", category:"latam",
+    desc:"Primer satélite ecuatoriano. CubeSat construido por la Fundación EXA. Transmitió imágenes y audio desde el espacio.",
+    orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:38760,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD ID","38760"],["Lanzamiento","26 Abr 2013"],["Organización","Fundación EXA"],["Tipo","CubeSat"],["Transmisión","Imagen + audio"],["País","🇪🇨 Ecuador"]]},
+
+  // ── ESPECIALES ────────────────────────────────────────────────
+  { id:"STARLINK", name:"Starlink", full:"Constelación Starlink de SpaceX", color:"#e2e8f0",
+    country:"SpaceX", flag:"🚀", icon:"✦", category:"special",
+    desc:"Constelación de más de 6,000 satélites de SpaceX. El objeto más visto en el cielo nocturno — pasan en grupos de 50+ creando un 'tren de luces'.",
+    orbit:"550 km", speed:"27,400 km/h", norad:44713,
+    photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
+    specs:[["NORAD (ejemplo)","44713"],["Lanzamiento","desde 2019"],["Operador","SpaceX"],["Constelación","+6,000 satélites"],["Órbita","540–570 km"],["Misión","Internet global"],["Inclinación","53°"]]},
 ];
+
+const COUNTRIES = [
+  { id:"all",       label:"Todos",       flag:"🌍" },
+  { id:"global",    label:"Globales",    flag:"🚀" },
+  { id:"CL",        label:"Chile",       flag:"🇨🇱" },
+  { id:"AR",        label:"Argentina",   flag:"🇦🇷" },
+  { id:"BR",        label:"Brasil",      flag:"🇧🇷" },
+  { id:"MX",        label:"México",      flag:"🇲🇽" },
+  { id:"BO",        label:"Bolivia",     flag:"🇧🇴" },
+  { id:"VE",        label:"Venezuela",   flag:"🇻🇪" },
+  { id:"CO",        label:"Colombia",    flag:"🇨🇴" },
+  { id:"PE",        label:"Perú",        flag:"🇵🇪" },
+  { id:"EC",        label:"Ecuador",     flag:"🇪🇨" },
+  { id:"special",   label:"Especiales",  flag:"✦"  },
+];
+
+const COUNTRY_MAP = {
+  ISS:"global", HST:"global", TIANGONG:"global",
+  SSOT:"CL", LEMU:"CL", SUCHAI2:"CL", SUCHAI3:"CL",
+  ARSAT1:"AR", ARSAT2:"AR",
+  SGDC:"BR", AMAZONIA1:"BR",
+  MORELOS3:"MX",
+  TUPAC:"BO",
+  VENESAT:"VE",
+  LIBERTAD1:"CO",
+  PERUSAT1:"PE",
+  PEGASO:"EC",
+  STARLINK:"special",
+};
+
 
 const API      = "https://australorbit-production.up.railway.app";
 const SANTIAGO = { lat: -33.4489, lon: -70.6693 };
@@ -1186,6 +1310,7 @@ export default function App() {
   });
 
   const [sat, setSat]                       = useState(SATS[0]);
+  const [countryFilter, setCountryFilter]   = useState("all");
   const [passes, setPasses]                 = useState([]);
   const [pos, setPos]                       = useState(null);
   const [news, setNews]                     = useState([]);
@@ -1339,16 +1464,6 @@ export default function App() {
 
         /* ── MOBILE ── */
         @media(max-width:600px){
-          /* Sat picker scroll horizontal suave */
-          .sat-picker-row{
-            overflow-x:auto!important;
-            flex-wrap:nowrap!important;
-            -webkit-overflow-scrolling:touch;
-            scrollbar-width:none;
-            padding-bottom:4px;
-            gap:6px!important;
-          }
-          .sat-picker-row::-webkit-scrollbar{display:none;}
           /* Nav: hide desktop sections, show hamburger */
           .nav-desktop-sections{display:none!important;}
           .nav-desktop-clock{display:none!important;}
@@ -1495,7 +1610,6 @@ export default function App() {
           {menuOpen && (
             <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
               <a href="/" className="active">Rastreo</a>
-              <a href="/satelites-chilenos">Satélites 🇨🇱</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
               <a href="/noticias">Noticias</a>
@@ -1511,7 +1625,7 @@ export default function App() {
             {/* Logo */}
             <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
               {!logoError
-                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:44,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
+                ?<img src="/logo.png" alt="Austral Orbit" onError={()=>setLogoError(true)} style={{height:52,width:"auto",objectFit:"contain",filter:"drop-shadow(0 2px 16px rgba(10,28,80,0.6)) brightness(1.08)",transition:"filter 0.6s"}}/>
                 :<span style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,letterSpacing:"0.06em",color:"#fff"}}>AO</span>
               }
               <div>
@@ -1574,7 +1688,7 @@ export default function App() {
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p className="hero-description" style={{fontSize:14,color:"rgba(255,255,255,0.35)",lineHeight:1.7,fontWeight:300,maxWidth:420,marginBottom:20}}>
+              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
                 Pases calculados en tiempo real sobre Santiago de Chile. Satélites locales, estaciones espaciales internacionales y más.
               </p>
 
@@ -1629,14 +1743,44 @@ export default function App() {
 
           {/* ── SAT PICKER ── */}
           <div style={{padding:"22px 0 18px"}}>
-            <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.28em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginBottom:12}}>Selecciona satélite</div>
+            <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.28em",color:"rgba(255,255,255,0.2)",textTransform:"uppercase",marginBottom:12}}>
+              Selecciona satélite
+            </div>
+
+            {/* Filtro por país */}
+            <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,scrollbarWidth:"none",marginBottom:10}}>
+              {COUNTRIES.map(c=>(
+                <button key={c.id}
+                  onClick={()=>{ setCountryFilter(c.id); const first=SATS.find(s=>c.id==="all"||(COUNTRY_MAP[s.id]===c.id)); if(first) setSat(first); }}
+                  style={{flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:99,
+                    background:countryFilter===c.id?"rgba(255,255,255,0.1)":"transparent",
+                    border:`1px solid ${countryFilter===c.id?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.06)"}`,
+                    color:countryFilter===c.id?"#fff":"rgba(255,255,255,0.35)",
+                    fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,letterSpacing:"0.06em",
+                    cursor:"pointer",transition:"all 0.2s",
+                  }}>
+                  <span style={{fontSize:12}}>{c.flag}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Satélites filtrados */}
             <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:4,scrollbarWidth:"none"}}>
-              {SATS.map(s=>(
+              {SATS.filter(s=>countryFilter==="all"||(COUNTRY_MAP[s.id]===countryFilter)).map(s=>(
                 <button key={s.id} className="sat-pill" onClick={()=>setSat(s)}
-                  style={{flexShrink:0,padding:"9px 16px",borderRadius:99,background:sat.id===s.id?s.color+"12":"rgba(255,255,255,0.025)",border:`1px solid ${sat.id===s.id?s.color+"50":"rgba(255,255,255,0.07)"}`,color:sat.id===s.id?s.color:"rgba(255,255,255,0.35)",fontFamily:"'IBM Plex Mono',monospace",fontSize:10.5,letterSpacing:"0.06em",boxShadow:sat.id===s.id?`0 0 20px ${s.color}14`:"none",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",display:"flex",alignItems:"center",gap:8}}>
+                  style={{flexShrink:0,padding:"9px 16px",borderRadius:99,
+                    background:sat.id===s.id?s.color+"15":"rgba(255,255,255,0.025)",
+                    border:`1px solid ${sat.id===s.id?s.color+"60":"rgba(255,255,255,0.07)"}`,
+                    color:sat.id===s.id?s.color:"rgba(255,255,255,0.4)",
+                    fontFamily:"'IBM Plex Mono',monospace",fontSize:10.5,letterSpacing:"0.06em",
+                    boxShadow:sat.id===s.id?`0 0 20px ${s.color}14`:"none",
+                    backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
+                    display:"flex",alignItems:"center",gap:7,transition:"all 0.2s",
+                  }}>
+                  <span style={{fontSize:12,flexShrink:0}}>{s.flag||"🛰️"}</span>
                   <span style={{display:"block",width:5,height:5,borderRadius:"50%",background:sat.id===s.id?s.color:"rgba(255,255,255,0.15)",boxShadow:sat.id===s.id?`0 0 8px ${s.color}`:"none",flexShrink:0}}/>
                   {s.name}
-                  {s.chilean&&<span style={{fontSize:7,background:"rgba(196,123,72,0.12)",color:"#C47B48",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(196,123,72,0.2)",letterSpacing:"0.06em"}}>🇨🇱 CL</span>}
                 </button>
               ))}
             </div>
