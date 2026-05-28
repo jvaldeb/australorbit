@@ -42,6 +42,35 @@ const SATS = [
     specs:[["NORAD ID","57758"],["Lanzamiento","12 Ene 2023"],["Universidad","U. de Chile"],["Tipo sat.","CubeSat 3U"],["Masa","~3 kg"],["Inclinación","97.5°"],["Período orbital","95.6 min"],["Misión","Monitoreo forestal"],["País","🇨🇱 Chile"]]},
 ];
 
+const COUNTRIES = [
+  { id:"all",     label:"Todos",     flag:"🌍" },
+  { id:"global",  label:"Globales",  flag:"🚀" },
+  { id:"CL",      label:"Chile",     flag:"🇨🇱" },
+  { id:"AR",      label:"Argentina", flag:"🇦🇷" },
+  { id:"BR",      label:"Brasil",    flag:"🇧🇷" },
+  { id:"MX",      label:"México",    flag:"🇲🇽" },
+  { id:"BO",      label:"Bolivia",   flag:"🇧🇴" },
+  { id:"VE",      label:"Venezuela", flag:"🇻🇪" },
+  { id:"CO",      label:"Colombia",  flag:"🇨🇴" },
+  { id:"PE",      label:"Perú",      flag:"🇵🇪" },
+  { id:"EC",      label:"Ecuador",   flag:"🇪🇨" },
+  { id:"special", label:"Especiales",flag:"✦"  },
+];
+
+const COUNTRY_MAP = {
+  ISS:"global", HST:"global", TIANGONG:"global",
+  SSOT:"CL", LEMU:"CL", SUCHAI2:"CL", SUCHAI3:"CL",
+  ARSAT1:"AR", ARSAT2:"AR",
+  SGDC:"BR", AMAZONIA1:"BR",
+  MORELOS3:"MX",
+  TUPAC:"BO",
+  VENESAT:"VE",
+  LIBERTAD1:"CO",
+  PERUSAT1:"PE",
+  PEGASO:"EC",
+  STARLINK:"special",
+};
+
 const API      = "https://australorbit-production.up.railway.app";
 const SANTIAGO = { lat: -33.4489, lon: -70.6693 };
 const d2r      = d => d * Math.PI / 180;
