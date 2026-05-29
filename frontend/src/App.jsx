@@ -103,7 +103,7 @@ const SATS = [
 
   // ── COLOMBIA 🇨🇴 ──────────────────────────────────────────────
   { id:"LIBERTAD1", name:"Libertad-1", full:"Primer Satélite Colombiano", color:"#fde047",
-    country:"Colombia", flag:"🇨🇴", icon:"🛰️", chilean:false,
+    country:"Colombia", flag:"🇨🇴", icon:"🛰️", chilean:false, status:"reingresado",
     desc:"Primer satélite de Colombia. CubeSat 1U de la Universidad Sergio Arboleda. Operó brevemente en 2007.",
     orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:31128,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
@@ -111,7 +111,7 @@ const SATS = [
 
   // ── ECUADOR 🇪🇨 ───────────────────────────────────────────────
   { id:"PEGASO", name:"NEE-01 Pegaso", full:"Primer Nanosatélite Ecuatoriano", color:"#a3e635",
-    country:"Ecuador", flag:"🇪🇨", icon:"🦅", chilean:false,
+    country:"Ecuador", flag:"🇪🇨", icon:"🦅", chilean:false, status:"reingresado",
     desc:"Primer satélite ecuatoriano. CubeSat de la Fundación EXA. Transmitió imágenes y audio en vivo desde el espacio.",
     orbit:"LEO (reingresó)", speed:"27,000 km/h", norad:38760,
     photo:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/CubeSat_in_orbit.jpg/1280px-CubeSat_in_orbit.jpg",
@@ -738,13 +738,19 @@ function generateShareCard({ pass, sat, city = "Chile" }) {
   ctx.font = "400 22px Arial, sans-serif";
   ctx.fillStyle = "rgba(255,255,255,0.18)";
   ctx.fillText("Datos en tiempo real · Skyfield + CelesTrak · " + new Date().getFullYear(), 80, 955);
+  const dataUrl  = canvas.toDataURL("image/png");
+  const filename = "austral-orbit-" + sat.name.toLowerCase() + "-" + fmtDate(pass.rise).replace(/ /g,"-") + ".png";
+  return { dataUrl, filename };
+}
+
+function downloadShareCard(dataUrl, filename) {
   const link = document.createElement("a");
-  link.download = "austral-orbit-" + sat.name.toLowerCase() + "-" + fmtDate(pass.rise).replace(/ /g,"-") + ".png";
-  link.href = canvas.toDataURL("image/png");
+  link.download = filename;
+  link.href = dataUrl;
   link.click();
 }
 
-function PassCard({ pass, sat, isNext }) {
+function PassCard({ pass, sat, isNext, userCity = "Chile", setSharePreview }) {
   const [open, setOpen] = useState(false);
   const [cd, setCd]     = useState(null);
   useEffect(() => {
@@ -752,7 +758,8 @@ function PassCard({ pass, sat, isNext }) {
     const t = setInterval(() => setCd(countdown(pass.rise)), 1000);
     return () => clearInterval(t);
   }, [isNext, pass.rise]);
-  const q  = pass.max_el >= 60 ? "ÓPTIMO" : pass.max_el >= 30 ? "BUENO" : "BAJO";
+  const q  = pass.max_el >= 60 ? "★★★ EXCELENTE" : pass.max_el >= 30 ? "★★ BUENO" : "★ BAJO";
+  const qHuman = pass.max_el >= 60 ? `Visible ${Math.floor(pass.duration/60)}m a simple vista` : pass.max_el >= 30 ? `Visible con buen cielo` : `Necesita binoculares`;
   const qc = pass.max_el >= 60 ? "#34d399" : pass.max_el >= 30 ? "#fbbf24" : "#334155";
   const dur= `${Math.floor(pass.duration/60)}m ${pass.duration%60}s`;
   return (
@@ -779,7 +786,7 @@ function PassCard({ pass, sat, isNext }) {
         <div style={{display:"flex",gap:5,flex:1,flexWrap:"wrap",alignItems:"center"}}>
           {isNext&&<span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.15em",padding:"3px 9px",borderRadius:20,background:sat.color+"14",color:sat.color,border:`1px solid ${sat.color}38`}}>PRÓXIMO</span>}
           {pass.visible&&<span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:"#22c55e10",color:"#4ade80",border:"1px solid #22c55e28"}}>● VISIBLE</span>}
-          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:qc+"10",color:qc,border:`1px solid ${qc}28`}}>{q} {pass.max_el}°</span>
+          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:qc+"10",color:qc,border:`1px solid ${qc}28`}}>{q} · {pass.max_el}°</span>
         </div>
         <div style={{textAlign:"right"}}>
           {isNext&&cd
@@ -802,11 +809,11 @@ function PassCard({ pass, sat, isNext }) {
             ))}
             <div style={{marginTop:5,padding:"12px 14px",background:sat.color+"08",borderRadius:12,border:`1px solid ${sat.color}14`}}>
               <div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginBottom:5,textTransform:"uppercase"}}>Consejo de observación</div>
-              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares para mejor visibilidad.`}</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente — más rápido que un avión y sin parpadear. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares. Mira hacia el ${azLabel(pass.rise_az)}.`}</div>
             </div>
             {/* Boton compartir */}
             <button
-              onClick={e => { e.stopPropagation(); generateShareCard({ pass, sat, city: userCity }); }}
+              onClick={e => { e.stopPropagation(); const r = generateShareCard({ pass, sat, city: userCity }); setSharePreview(r); }}
               style={{
                 marginTop:12, display:"flex", alignItems:"center", gap:8,
                 padding:"10px 20px", borderRadius:12,
@@ -1239,7 +1246,7 @@ function NightMode({ pass, sat, onClose }) {
           </div>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
             <button
-              onClick={() => generateShareCard({ pass, sat, city: userCity })}
+              onClick={() => { const r = generateShareCard({ pass, sat, city: userCity }); setSharePreview(r); }}
               style={{
                 padding:"14px 28px",borderRadius:14,
                 background:satColor,border:"none",
@@ -1321,11 +1328,15 @@ export default function App() {
   const [activeSection, setActiveSection]   = useState("passes"); // "passes" | "news"
   const [nightMode, setNightMode]           = useState(false);
   const [nightPass, setNightPass]           = useState(null);
+  const [alertToast, setAlertToast]         = useState(null);
+  const [sharePreview, setSharePreview]     = useState(null); // { dataUrl, filename }
+  const [geoPrompt, setGeoPrompt]           = useState(true);  // splash bienvenida
   const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
-  useEffect(() => {
+  const requestGeo = () => {
+    setGeoPrompt(false);
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
@@ -1338,7 +1349,7 @@ export default function App() {
       },
       () => {}
     );
-  }, []);
+  };
 
   const scheduleAlerts = useCallback((passList, sat, minutes) => {
     alertTimers.current.forEach(t => clearTimeout(t));
@@ -1365,12 +1376,28 @@ export default function App() {
     return () => alertTimers.current.forEach(t => clearTimeout(t));
   }, [alertsEnabled, passes, sat, alertMinutes, scheduleAlerts]);
 
+  const showAlertToast = (msg) => {
+    setAlertToast(msg);
+    setTimeout(() => setAlertToast(null), 4000);
+  };
+
   const requestAlerts = async () => {
     if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones."); return; }
-    if (Notification.permission === "granted") { setAlertsEnabled(a => !a); return; }
+    if (Notification.permission === "granted") {
+      const next = passes.find(p => new Date(p.rise) > new Date());
+      setAlertsEnabled(a => {
+        if (!a && next) showAlertToast(`⏰ Te avisaremos ${alertMinutes} min antes del próximo pase de ${sat.name} · ${fmtTime(next.rise)}h`);
+        return !a;
+      });
+      return;
+    }
     const perm = await Notification.requestPermission();
     setAlertPermission(perm);
-    if (perm === "granted") setAlertsEnabled(true);
+    if (perm === "granted") {
+      setAlertsEnabled(true);
+      const next = passes.find(p => new Date(p.rise) > new Date());
+      if (next) showAlertToast(`⏰ Te avisaremos ${alertMinutes} min antes del próximo pase de ${sat.name} · ${fmtTime(next.rise)}h`);
+    }
   };
 
   useEffect(() => {
@@ -1426,6 +1453,63 @@ export default function App() {
 
   return (
     <>
+      {/* Splash de bienvenida — pide ubicación con contexto */}
+      {geoPrompt && (
+        <div style={{
+          position:"fixed",inset:0,zIndex:700,
+          background:"rgba(0,0,0,0.96)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          padding:24,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+          animation:"fadeIn 0.4s ease both",
+        }}>
+          <div style={{
+            maxWidth:380,width:"100%",textAlign:"center",
+            animation:"fadeUp 0.5s ease 0.1s both",
+          }}>
+            <div style={{fontSize:48,marginBottom:20}}>🛰</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:26,fontWeight:800,color:"#fff",lineHeight:1.15,marginBottom:12}}>
+              El espacio está<br/>
+              <span style={{fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontWeight:400,color:sat.color}}>sobre tu ciudad</span>
+            </div>
+            <p style={{fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.75,marginBottom:28,fontWeight:300}}>
+              Austral Orbit calcula los pases de satélites exactamente desde donde estás. Necesitamos tu ubicación para mostrarte los horarios reales.
+            </p>
+            <div style={{
+              padding:"12px 16px",borderRadius:12,
+              background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",
+              marginBottom:20,fontSize:11,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace",
+              lineHeight:1.6,
+            }}>
+              📍 Solo se usa para calcular pases · No se almacena
+            </div>
+            <button
+              onClick={requestGeo}
+              style={{
+                width:"100%",padding:"14px",borderRadius:14,marginBottom:10,
+                background:sat.color,border:"none",
+                color:"#000",fontFamily:"'Syne',sans-serif",
+                fontSize:14,fontWeight:700,cursor:"pointer",transition:"opacity 0.2s",
+              }}
+              onMouseEnter={e=>e.currentTarget.style.opacity="0.88"}
+              onMouseLeave={e=>e.currentTarget.style.opacity="1"}
+            >
+              Compartir mi ubicación
+            </button>
+            <button
+              onClick={()=>setGeoPrompt(false)}
+              style={{
+                width:"100%",padding:"12px",borderRadius:14,
+                background:"transparent",border:"1px solid rgba(255,255,255,0.1)",
+                color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace",
+                fontSize:10,letterSpacing:"0.1em",cursor:"pointer",
+              }}
+            >
+              Continuar con Santiago (default)
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400;1,600&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -1716,7 +1800,11 @@ export default function App() {
             {/* Botón modo observación nocturna */}
             {next && (
               <button
-                onClick={() => { setNightPass(next); setNightMode(true); }}
+                onClick={() => {
+                  setNightPass(next);
+                  setNightMode(true);
+                  navigator.vibrate?.(40);
+                }}
                 style={{
                   marginTop:16, display:"inline-flex", alignItems:"center", gap:8,
                   padding:"10px 20px", borderRadius:12,
@@ -1793,6 +1881,11 @@ export default function App() {
                     <span style={{fontSize:7,padding:"1px 5px",borderRadius:4,
                       background:"rgba(255,255,255,0.05)",color:"rgba(255,255,255,0.2)",
                       border:"1px solid rgba(255,255,255,0.07)"}}>GEO</span>
+                  )}
+                  {s.status==="reingresado" && (
+                    <span style={{fontSize:7,padding:"1px 5px",borderRadius:4,
+                      background:"rgba(100,116,139,0.12)",color:"rgba(148,163,184,0.7)",
+                      border:"1px solid rgba(100,116,139,0.2)"}}>HIST</span>
                   )}
                 </button>
               ))}
@@ -2015,9 +2108,9 @@ export default function App() {
               {/* PASSES SECTION */}
               {activeSection==="passes" && (
                 <>
-                  {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:12,display:"inline-block",animation:"spinSlow 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:sat.color,letterSpacing:"0.14em"}}>Calculando pases reales...</div></div>}
+                  {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:14,display:"inline-block",animation:"spinSlow 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:sat.color,letterSpacing:"0.16em",marginBottom:8}}>CALCULANDO TRAYECTORIA ORBITAL</div><div style={{display:"flex",gap:5,justifyContent:"center"}}>{[0,1,2].map(i=><span key={i} style={{display:"block",width:4,height:4,borderRadius:"50%",background:sat.color,animation:`livePulse 1.4s ease-in-out ${i*0.22}s infinite`}}/>)}</div></div>}
                   {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed rgba(244,63,94,0.2)",borderRadius:16,background:"rgba(244,63,94,0.04)"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
-                  {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0}/>)}
+                  {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0} userCity={userCity} setSharePreview={setSharePreview}/>)}
                   {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"rgba(255,255,255,0.15)",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
                 </>
               )}
@@ -2071,8 +2164,86 @@ export default function App() {
         </div>
       </div>
 
+      {/* Share preview modal */}
+      {sharePreview && (
+        <div
+          onClick={()=>setSharePreview(null)}
+          style={{
+            position:"fixed",inset:0,zIndex:600,
+            background:"rgba(0,0,0,0.88)",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            padding:24,animation:"fadeIn 0.2s ease both",
+            backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
+          }}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            maxWidth:420,width:"100%",borderRadius:20,overflow:"hidden",
+            border:"1px solid rgba(255,255,255,0.1)",animation:"fadeUp 0.25s ease both",
+          }}>
+            <img src={sharePreview.dataUrl} alt="Preview" style={{width:"100%",display:"block"}}/>
+            <div style={{background:"rgba(0,0,0,0.95)",padding:"16px 20px",display:"flex",gap:10}}>
+              <button
+                onClick={()=>{ downloadShareCard(sharePreview.dataUrl, sharePreview.filename); setSharePreview(null); }}
+                style={{
+                  flex:1,padding:"11px",borderRadius:12,
+                  background:sat.color,border:"none",
+                  color:"#000",fontFamily:"'IBM Plex Mono',monospace",
+                  fontSize:10,fontWeight:700,letterSpacing:"0.1em",cursor:"pointer",
+                }}>
+                DESCARGAR
+              </button>
+              {navigator.share && (
+                <button
+                  onClick={async()=>{
+                    try {
+                      const blob = await (await fetch(sharePreview.dataUrl)).blob();
+                      const file = new File([blob], sharePreview.filename, {type:"image/png"});
+                      await navigator.share({files:[file],title:`${sat.name} sobre ${userCity}`});
+                    } catch {}
+                    setSharePreview(null);
+                  }}
+                  style={{
+                    flex:1,padding:"11px",borderRadius:12,
+                    background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",
+                    color:"#fff",fontFamily:"'IBM Plex Mono',monospace",
+                    fontSize:10,letterSpacing:"0.1em",cursor:"pointer",
+                  }}>
+                  COMPARTIR
+                </button>
+              )}
+              <button
+                onClick={()=>setSharePreview(null)}
+                style={{
+                  padding:"11px 16px",borderRadius:12,
+                  background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",
+                  color:"rgba(255,255,255,0.4)",fontFamily:"'IBM Plex Mono',monospace",
+                  fontSize:10,cursor:"pointer",
+                }}>
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Notif banner */}
       {!notifDismissed && <NotifBanner next={notifNext} sat={sat} onDismiss={() => setNotifDismissed(true)} />}
+
+      {/* Alert toast */}
+      {alertToast && (
+        <div style={{
+          position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",
+          zIndex:400,padding:"12px 20px",borderRadius:14,
+          background:"rgba(0,0,0,0.9)",border:`1px solid ${sat.color}55`,
+          backdropFilter:"blur(30px)",WebkitBackdropFilter:"blur(30px)",
+          display:"flex",alignItems:"center",gap:10,
+          boxShadow:`0 0 30px ${sat.color}18`,maxWidth:"88vw",
+          animation:"fadeUp 0.3s ease both",
+        }}>
+          <span style={{fontSize:16}}>🔔</span>
+          <span style={{fontSize:10,fontFamily:"'IBM Plex Mono',monospace",color:sat.color,letterSpacing:"0.06em"}}>{alertToast}</span>
+        </div>
+      )}
+
       {nightMode && nightPass && (
         <NightMode pass={nightPass} sat={sat} onClose={() => setNightMode(false)} />
       )}
