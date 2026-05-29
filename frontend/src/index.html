@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="google-site-verification" content="RAAzbcxfydib6qMACyjfCmjwmYq6GWaLhzwY4lwnngU" />
 
     <!-- ── SEO Básico ─────────────────────────────────────────── -->
@@ -14,26 +14,55 @@
     <link rel="canonical" href="https://australorbit.com" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
 
-    <!-- ── Open Graph (LinkedIn, Facebook, WhatsApp) ──────────── -->
+    <!-- ── PWA ───────────────────────────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Austral Orbit" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- ── Open Graph ─────────────────────────────────────────── -->
     <meta property="og:type"        content="website" />
     <meta property="og:site_name"   content="Austral Orbit" />
     <meta property="og:locale"      content="es_CL" />
     <meta property="og:title"       content="Austral Orbit — Rastreo de satélites en tiempo real" />
     <meta property="og:description" content="Rastreo de satélites en tiempo real desde el hemisferio sur. Sigue la ISS, satélites chilenos y eventos espaciales desde Chile y Latinoamérica." />
     <meta property="og:url"         content="https://australorbit.com" />
-    <meta property="og:image"       content="https://australorbit.com/earth-bg.png" />
+    <meta property="og:image"       content="https://australorbit.com/og-image.png" />
 
     <!-- ── Twitter / X ────────────────────────────────────────── -->
     <meta name="twitter:card"        content="summary_large_image" />
     <meta name="twitter:title"       content="Austral Orbit — Rastreo de satélites en tiempo real" />
     <meta name="twitter:description" content="Rastreo de satélites en tiempo real desde el hemisferio sur. Sigue la ISS, satélites chilenos y eventos espaciales desde Chile y Latinoamérica." />
-    <meta name="twitter:image"       content="https://australorbit.com/earth-bg.png" />
+    <meta name="twitter:image"       content="https://australorbit.com/og-image.png" />
 
     <!-- ── Favicon ────────────────────────────────────────────── -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
-    <!-- ── Theme color (barra del browser en mobile) ──────────── -->
+    <!-- ── Theme color ────────────────────────────────────────── -->
     <meta name="theme-color" content="#000000" />
+
+    <!-- ── Preconnect fonts ───────────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- ── JSON-LD structured data ───────────────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Austral Orbit",
+      "url": "https://australorbit.com",
+      "description": "Rastreo de satélites en tiempo real desde el hemisferio sur",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "Any",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "Joaquín Valdebenito Palma" }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

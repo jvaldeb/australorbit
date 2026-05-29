@@ -566,3 +566,170 @@ async def contact(form: ContactForm):
     except Exception as e:
         print(f"[CONTACT] Error: {e}")
         return {"ok": False, "error": str(e)}
+
+
+# ── LATAM News ────────────────────────────────────────────────────────────────
+
+LATAM_KEYWORDS = [
+    # Países
+    "chile", "chileno", "chilena",
+    "argentina", "argentino", "argentina",
+    "brasil", "brazil", "brasileiro", "brasileño",
+    "mexico", "méxico", "mexicano",
+    "colombia", "colombiano",
+    "peru", "perú", "peruano",
+    "venezuela", "venezolano",
+    "bolivia", "boliviano",
+    "ecuador", "ecuatoriano",
+    "uruguay", "uruguayo",
+    "paraguay", "paraguayo",
+    "cuba", "cubano",
+    # Agencias / empresas LATAM
+    "conae", "inpe", "ae", "agencia espacial chilena",
+    "embrapa", "telesat", "arsat", "invap",
+    "lemu", "suchai", "ssot", "fasat",
+    # Observatorios y lugares
+    "atacama", "alma", "paranal", "eso", "cerro", "andes",
+    "patagonia", "tierra del fuego", "amazon", "amazonia",
+    # Temáticas regionales
+    "latin america", "latinoamerica", "latinoamérica",
+    "south america", "sudamérica", "southern hemisphere",
+    "hemisferio sur", "hemisferio austral",
+    "aurora austral", "aurora borealis chile",
+]
+
+_latam_cache = {"date": None, "articles": []}
+LATAM_CACHE_FILE = "latam_news_cache.json"
+
+
+def is_latam_article(article: dict) -> bool:
+    """Retorna True si el artículo menciona LATAM en título o resumen."""
+    text = (
+        (article.get("title") or "") + " " +
+        (article.get("title_en") or "") + " " +
+        (article.get("summary") or "")
+    ).lower()
+    return any(kw in text for kw in LATAM_KEYWORDS)
+
+
+async def fetch_latam_news():
+    """Busca artículos de LATAM — primero en fuente global, luego con búsqueda específica."""
+    async with httpx.AsyncClient() as client:
+        # 1. Buscar con keywords directamente en la API
+        latam_articles = []
+        for keyword in ["latin america", "chile space", "argentina space", "brazil space", "CONAE", "INPE", "atacama"]:
+            try:
+                r = await client.get(
+                    f"https://api.spaceflightnewsapi.net/v4/articles/?limit=5&ordering=-published_at&search={keyword}",
+                    timeout=10,
+                )
+                data = r.json()
+                latam_articles.extend(data.get("results", []))
+            except Exception:
+                pass
+
+        # 2. Deduplicar por ID
+        seen = set()
+        unique = []
+        for a in latam_articles:
+            if a.get("id") not in seen:
+                seen.add(a["id"])
+                unique.append(a)
+
+        # 3. Formatear igual que los artículos globales
+        meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
+        articles = []
+        for a in unique[:15]:
+            try:
+                pub = datetime.fromisoformat(a["published_at"].replace("Z", "+00:00"))
+                articles.append({
+                    "title":         translate(a["title"]),
+                    "title_en":      a["title"],
+                    "summary":       translate(a.get("summary", "")[:400]),
+                    "url":           a["url"],
+                    "image":         a.get("image_url", ""),
+                    "source":        a["news_site"],
+                    "published":     f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}",
+                    "published_raw": a["published_at"],
+                    "latam":         True,
+                })
+            except Exception as e:
+                print(f"[LATAM NEWS] Error: {e}")
+
+        # 4. Si hay pocos, complementar con artículos globales que mencionen LATAM
+        if len(articles) < 5:
+            global_arts = _news_cache.get("articles", [])
+            for a in global_arts:
+                if is_latam_article(a) and a.get("url") not in {x["url"] for x in articles}:
+                    articles.append({**a, "latam": True})
+                if len(articles) >= 12:
+                    break
+
+        return articles
+
+
+def load_latam_cache():
+    if os.path.exists(LATAM_CACHE_FILE):
+        try:
+            with open(LATAM_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"date": None, "articles": []}
+
+
+async def get_latam_news_cached():
+    global _latam_cache
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not _latam_cache["articles"]:
+        _latam_cache = load_latam_cache()
+    if _latam_cache.get("date") == today and _latam_cache.get("articles"):
+        return _latam_cache["articles"]
+    print(f"[LATAM NEWS] Actualizando para {today}...")
+    try:
+        articles = await fetch_latam_news()
+        _latam_cache = {"date": today, "articles": articles}
+        with open(LATAM_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(_latam_cache, f, ensure_ascii=False, indent=2)
+        return articles
+    except Exception as e:
+        print(f"[LATAM NEWS] Error: {e}")
+        return _latam_cache.get("articles", [])
+
+
+@app.get("/news/latam")
+async def news_latam():
+    """Noticias espaciales relacionadas con Latinoamérica."""
+    articles = await get_latam_news_cached()
+    return {"articles": articles, "count": len(articles)}
+
+
+@app.get("/news/country/{country_code}")
+async def news_by_country(country_code: str):
+    """Noticias filtradas por país (por ahora filtra de la caché global + latam)."""
+    COUNTRY_KEYWORDS = {
+        "CL": ["chile", "chileno", "chilena", "ssot", "suchai", "lemu", "fasat", "atacama", "paranal", "alma"],
+        "AR": ["argentina", "argentino", "arsat", "invap", "conae", "patagonia"],
+        "BR": ["brasil", "brazil", "brasileiro", "brasileño", "inpe", "amazonia", "amazon"],
+        "MX": ["mexico", "méxico", "mexicano", "morelos"],
+        "CO": ["colombia", "colombiano"],
+        "PE": ["peru", "perú", "peruano", "perusat"],
+        "VE": ["venezuela", "venezolano", "venesat"],
+        "BO": ["bolivia", "boliviano", "tupac katari"],
+        "EC": ["ecuador", "ecuatoriano"],
+    }
+    code = country_code.upper()
+    keywords = COUNTRY_KEYWORDS.get(code, [])
+
+    all_articles = _news_cache.get("articles", []) + _latam_cache.get("articles", [])
+    seen = set()
+    filtered = []
+    for a in all_articles:
+        url = a.get("url", "")
+        if url in seen:
+            continue
+        text = ((a.get("title") or "") + " " + (a.get("title_en") or "") + " " + (a.get("summary") or "")).lower()
+        if any(kw in text for kw in keywords):
+            seen.add(url)
+            filtered.append({**a, "country_match": code})
+    return {"articles": filtered[:10], "count": len(filtered), "country": code}
