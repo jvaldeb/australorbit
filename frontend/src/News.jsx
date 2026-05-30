@@ -417,19 +417,36 @@ export default function News() {
           )}
 
           {!currentLoading && (
-            <div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:16,paddingBottom:48}}>
-              {filtered.map((a,i)=>(
-                <div key={i} style={{
-                  gridColumn: i===0&&filtered.length>1?"1 / -1 ":"auto",
-                  maxWidth: i===0&&filtered.length>1?680:"none",
-                  animation:`fadeUp 0.4s ease ${Math.min(i*0.05,0.4)}s both`
-                }}>
-                  <NewsCard article={a} featured={i===0}/>
-                </div>
-              ))}
+            <div style={{paddingBottom:48}}>
+              {filtered.length > 0 && (() => {
+                const [featuredArticle, ...restArticles] = filtered;
+                return (
+                  <>
+                    {/* Featured hero */}
+                    <div style={{animation:"fadeUp 0.4s ease both",marginBottom:16}}>
+                      <NewsCard article={featuredArticle} featured={true}/>
+                    </div>
+
+                    {/* Grid asimétrico del resto */}
+                    {restArticles.length > 0 && (
+                      <div style={{
+                        display:"grid",
+                        gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",
+                        gap:14,
+                      }}>
+                        {restArticles.map((a,i)=>(
+                          <div key={i} style={{animation:`fadeUp 0.4s ease ${Math.min((i+1)*0.05,0.5)}s both`}}>
+                            <NewsCard article={a} featured={false}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {filtered.length === 0 && (
-                <div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16,gridColumn:"1/-1"}}>
+                <div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16}}>
                   <div style={{fontSize:28,marginBottom:12}}>
                     {activeTab==="pais"?"🛰":activeTab==="latam"?"🌎":"🔭"}
                   </div>

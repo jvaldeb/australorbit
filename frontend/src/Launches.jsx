@@ -117,61 +117,101 @@ function LaunchCard({ launch, isNext }) {
   const mtype    = launch.mission?.type || null;
   const mdesc    = launch.mission?.description || null;
   const img      = !imgErr && (launch.image?.image_url || launch.image?.thumbnail_url || null);
+  const isLive   = launch.status?.id === 6;
+
+  // Urgencia de countdown
+  const diffMs    = new Date(launch.net) - new Date();
+  const hoursLeft = diffMs / 3600000;
+  const isUrgent  = isNext && hoursLeft <= 24 && hoursLeft > 0;
+  const isImminent= isNext && hoursLeft <= 1 && hoursLeft > 0;
+  const cdColor   = isImminent ? "#4ade80" : isUrgent ? "#57C7FF" : (isNext ? "#57C7FF" : "#F0F4F8");
 
   return (
-    <div style={{borderRadius:16,border:`1px solid ${isNext?"rgba(87,199,255,0.28)":"rgba(255,255,255,0.07)"}`,background:"rgba(255,255,255,0.014)",backdropFilter:"blur(10px)",marginBottom:12,overflow:"hidden",transition:"all 0.2s",boxShadow:isNext?"0 0 30px rgba(87,199,255,0.06)":"none"}}
+    <div
+      className={`launch-card${isNext?" launch-card--next":""}${isUrgent?" launch-card--urgent":""}${isImminent?" launch-card--imminent":""}`}
+      style={{
+        borderRadius:16,
+        border:`1px solid ${isNext?"rgba(87,199,255,0.28)":"rgba(255,255,255,0.07)"}`,
+        background:"rgba(255,255,255,0.014)",
+        backdropFilter:"blur(10px)",
+        marginBottom:12,overflow:"hidden",
+        transition:"border-color 0.3s,box-shadow 0.3s",
+        boxShadow:isNext?"0 0 30px rgba(87,199,255,0.06)":"none",
+        position:"relative",
+      }}
       onMouseEnter={e=>{if(!isNext)e.currentTarget.style.borderColor="rgba(255,255,255,0.14)";}}
       onMouseLeave={e=>{if(!isNext)e.currentTarget.style.borderColor="rgba(255,255,255,0.07)";}}>
-      {img && (
-        <div style={{position:"relative",height:isNext?200:140,overflow:"hidden",cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
-          <img src={img} alt={launch.name} style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.75,display:"block",transition:"transform 0.4s ease,opacity 0.3s"}}
-            onError={()=>setImgErr(true)}
-            onMouseEnter={e=>{e.target.style.transform="scale(1.04)";e.target.style.opacity="0.88";}}
-            onMouseLeave={e=>{e.target.style.transform="scale(1)";e.target.style.opacity="0.75";}}/>
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(5,8,22,0.95) 0%, rgba(5,8,22,0.3) 60%, transparent 100%)"}}/>
-          {launch.image?.credit && <div style={{position:"absolute",top:10,right:10,fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.35)",background:"rgba(0,0,0,0.4)",padding:"2px 7px",borderRadius:4}}>© {launch.image.credit}</div>}
-          {isNext && <div style={{position:"absolute",top:12,left:12,display:"inline-flex",alignItems:"center",gap:6,padding:"3px 10px",borderRadius:20,background:"rgba(87,199,255,0.18)",border:"1px solid rgba(87,199,255,0.4)",backdropFilter:"blur(8px)"}}><span style={{display:"block",width:5,height:5,borderRadius:"50%",background:"#57C7FF",animation:"livePulse 2s infinite"}}/><span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"#57C7FF",letterSpacing:"0.18em"}}>PRÓXIMO LANZAMIENTO</span></div>}
-          {cd && <div style={{position:"absolute",bottom:14,right:14,textAlign:"right"}}><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:isNext?26:18,fontWeight:600,color:"white",letterSpacing:"0.04em",textShadow:"0 2px 12px rgba(0,0,0,0.8)"}}>{cd}</div><div style={{fontSize:8.5,color:"rgba(255,255,255,0.45)",fontFamily:"'IBM Plex Mono',monospace"}}>{fmtDate(launch.net)}</div></div>}
-        </div>
+      {/* Borde degradado animado — visible cuando hay urgencia */}
+      {(isUrgent || isImminent) && (
+        <div style={{
+          position:"absolute",inset:-1,borderRadius:17,zIndex:0,
+          background:`linear-gradient(90deg, ${isImminent?"#4ade80":"#57C7FF"}, transparent, ${isImminent?"#4ade80":"#57C7FF"})`,
+          backgroundSize:"200% 100%",
+          animation:"gradientBorder 3s linear infinite",
+          opacity: isImminent ? 0.7 : 0.45,
+          pointerEvents:"none",
+        }}/>
       )}
-      <div style={{padding:"14px 18px",cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
-          <div style={{flex:1,minWidth:0}}>
-            {isNext && !img && <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"2px 9px",borderRadius:20,background:"rgba(87,199,255,0.12)",border:"1px solid rgba(87,199,255,0.3)",marginBottom:7}}><span style={{display:"block",width:4,height:4,borderRadius:"50%",background:"#57C7FF",animation:"livePulse 2s infinite"}}/><span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"#57C7FF",letterSpacing:"0.18em"}}>PRÓXIMO LANZAMIENTO</span></div>}
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#F0F4F8",letterSpacing:"-0.01em",marginBottom:6,lineHeight:1.3}}>{launch.name}</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",padding:"2px 8px",borderRadius:5,background:status.bg,color:status.color,border:`1px solid ${status.border}`}}>{status.label}</span>
-              {mtype && <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.3)",padding:"2px 7px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)"}}>{mtype}</span>}
-              <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)"}}>{provider}</span>
+      {/* Inner wrap para que el borde degradado no se superponga al contenido */}
+      <div style={{position:"relative",zIndex:1,borderRadius:15,overflow:"hidden",background:"rgba(5,8,22,0.95)"}}>
+        {img && (
+          <div style={{position:"relative",height:isNext?200:140,overflow:"hidden",cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+            <img src={img} alt={launch.name} style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.75,display:"block",transition:"transform 0.4s ease,opacity 0.3s"}}
+              onError={()=>setImgErr(true)}
+              onMouseEnter={e=>{e.target.style.transform="scale(1.04)";e.target.style.opacity="0.88";}}
+              onMouseLeave={e=>{e.target.style.transform="scale(1)";e.target.style.opacity="0.75";}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(5,8,22,0.95) 0%, rgba(5,8,22,0.3) 60%, transparent 100%)"}}/>
+            {launch.image?.credit && <div style={{position:"absolute",top:10,right:10,fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.35)",background:"rgba(0,0,0,0.4)",padding:"2px 7px",borderRadius:4}}>© {launch.image.credit}</div>}
+            {isNext && <div style={{position:"absolute",top:12,left:12,display:"inline-flex",alignItems:"center",gap:6,padding:"3px 10px",borderRadius:20,background:"rgba(87,199,255,0.18)",border:"1px solid rgba(87,199,255,0.4)",backdropFilter:"blur(8px)"}}><span style={{display:"block",width:5,height:5,borderRadius:"50%",background:"#57C7FF",animation:"livePulse 2s infinite"}}/><span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"#57C7FF",letterSpacing:"0.18em"}}>PRÓXIMO LANZAMIENTO</span></div>}
+            {isLive && <div style={{position:"absolute",top:12,right:12,display:"inline-flex",alignItems:"center",gap:6,padding:"3px 10px",borderRadius:20,background:"rgba(239,68,68,0.2)",border:"1px solid rgba(239,68,68,0.4)",backdropFilter:"blur(8px)",animation:"livePulse 2s infinite"}}><span style={{display:"block",width:5,height:5,borderRadius:"50%",background:"#f87171"}}/><span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"#f87171",letterSpacing:"0.18em"}}>EN VIVO</span></div>}
+            {cd && <div style={{position:"absolute",bottom:14,right:14,textAlign:"right"}}>
+              <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:isNext?26:18,fontWeight:600,color:cdColor,letterSpacing:"0.04em",textShadow:"0 2px 12px rgba(0,0,0,0.8)",transition:"color 0.8s ease"}}>{cd}</div>
+              <div style={{fontSize:8.5,color:"rgba(255,255,255,0.45)",fontFamily:"'IBM Plex Mono',monospace"}}>{fmtDate(launch.net)}</div>
+            </div>}
+          </div>
+        )}
+        <div style={{padding:"14px 18px",cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              {isNext && !img && <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"2px 9px",borderRadius:20,background:"rgba(87,199,255,0.12)",border:"1px solid rgba(87,199,255,0.3)",marginBottom:7}}><span style={{display:"block",width:4,height:4,borderRadius:"50%",background:"#57C7FF",animation:"livePulse 2s infinite"}}/><span style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"#57C7FF",letterSpacing:"0.18em"}}>PRÓXIMO LANZAMIENTO</span></div>}
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"#F0F4F8",letterSpacing:"-0.01em",marginBottom:6,lineHeight:1.3}}>{launch.name}</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",padding:"2px 8px",borderRadius:5,background:status.bg,color:status.color,border:`1px solid ${status.border}`}}>{status.label}</span>
+                {mtype && <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.3)",padding:"2px 7px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)"}}>{mtype}</span>}
+                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)"}}>{provider}</span>
+              </div>
+            </div>
+            {!img && <div style={{textAlign:"right",flexShrink:0}}>
+              {cd
+                ?<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:isNext?20:15,fontWeight:600,color:cdColor,letterSpacing:"0.04em",transition:"color 0.8s ease"}}>{cd}</div>
+                :<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:"rgba(255,255,255,0.2)"}}>Lanzado</div>
+              }
+              <div style={{fontSize:8.5,color:"rgba(255,255,255,0.15)",fontFamily:"'IBM Plex Mono',monospace",marginTop:2}}>{fmtDate(launch.net)}</div>
+            </div>}
+            <span style={{color:"rgba(255,255,255,0.15)",fontSize:11,flexShrink:0,paddingTop:2}}>{open?"▲":"▼"}</span>
+          </div>
+          <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
+            {[["🚀",rocket],["📍",pad_name],["🌍",location]].map(([icon,v])=>(
+              <div key={icon} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace"}}>
+                <span style={{fontSize:11}}>{icon}</span><span>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {open && (
+          <div style={{padding:"14px 18px",borderTop:"1px solid rgba(255,255,255,0.05)",animation:"fadeUp 0.2s ease both"}}>
+            {mdesc && (
+              <>
+                <div style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.15)",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Descripción de la misión</div>
+                <p style={{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.72,fontWeight:300,marginBottom:12}}>{mdesc}</p>
+              </>
+            )}
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {launch.webcast_live && <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:8,background:"#ef444410",border:"1px solid #ef444430",fontSize:9.5,color:"#f87171",fontFamily:"'IBM Plex Mono',monospace"}}>● TRANSMISIÓN EN VIVO</div>}
             </div>
           </div>
-          {!img && <div style={{textAlign:"right",flexShrink:0}}>
-            {cd?<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:isNext?20:15,fontWeight:600,color:isNext?"#57C7FF":"#F0F4F8",letterSpacing:"0.04em"}}>{cd}</div>:<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:"rgba(255,255,255,0.2)"}}>Lanzado</div>}
-            <div style={{fontSize:8.5,color:"rgba(255,255,255,0.15)",fontFamily:"'IBM Plex Mono',monospace",marginTop:2}}>{fmtDate(launch.net)}</div>
-          </div>}
-          <span style={{color:"rgba(255,255,255,0.15)",fontSize:11,flexShrink:0,paddingTop:2}}>{open?"▲":"▼"}</span>
-        </div>
-        <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
-          {[["🚀",rocket],["📍",pad_name],["🌍",location]].map(([icon,v])=>(
-            <div key={icon} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'IBM Plex Mono',monospace"}}>
-              <span style={{fontSize:11}}>{icon}</span><span>{v}</span>
-            </div>
-          ))}
-        </div>
+        )}
       </div>
-      {open && (
-        <div style={{padding:"14px 18px",borderTop:"1px solid rgba(255,255,255,0.05)",animation:"fadeUp 0.2s ease both"}}>
-          {mdesc && (
-            <>
-              <div style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.15)",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Descripción de la misión</div>
-              <p style={{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.72,fontWeight:300,marginBottom:12}}>{mdesc}</p>
-            </>
-          )}
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {launch.webcast_live && <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:8,background:"#ef444410",border:"1px solid #ef444430",fontSize:9.5,color:"#f87171",fontFamily:"'IBM Plex Mono',monospace"}}>● TRANSMISIÓN EN VIVO</div>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -224,7 +264,19 @@ export default function Launches() {
         @keyframes auroraF2{0%,100%{transform:translate(0,0)}50%{transform:translate(2%,3%)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes shimmer{0%{opacity:0.4}50%{opacity:1}100%{opacity:0.4}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes gradientBorder{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        .launch-card{transition:transform 0.2s ease,border-color 0.3s;}
+        .launch-card:hover{transform:translateY(-2px);}
+        .launch-card--urgent{box-shadow:0 0 0 1px rgba(87,199,255,0.2),0 0 24px rgba(87,199,255,0.06);}
+        .launch-card--imminent{box-shadow:0 0 0 1px rgba(74,222,128,0.3),0 0 32px rgba(74,222,128,0.08);}
+        .skeleton-launch{border-radius:16px;border:1px solid rgba(255,255,255,0.05);background:linear-gradient(90deg,rgba(255,255,255,0.03) 0%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 100%);background-size:200% 100%;animation:shimmer 1.8s ease-in-out infinite;margin-bottom:12px;}
+        .providers-scroll::-webkit-scrollbar{height:2px;}
+        .providers-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+        .provider-pill{transition:all 0.18s cubic-bezier(0.34,1.4,0.64,1);}
+        .provider-pill:hover{transform:translateY(-2px) scale(1.04);}
+        .provider-pill:active{transform:scale(0.92);}
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;flex-shrink:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         @media(max-width:600px){

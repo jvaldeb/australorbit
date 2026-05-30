@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { usePageMeta } from "./usePageMeta.js";
 import { useGeoLocation } from "./useGeoLocation.js";
 import GeoSplash from "./GeoSplash.jsx";
@@ -429,30 +429,76 @@ const LINKS = [
 /* ─────────────────────────────────────────────
    COMPONENTES
 ───────────────────────────────────────────── */
-function SatCard({ sat, pos, accentColor }) {
+function SatCard({ sat, pos, accentColor, index = 0 }) {
   const [expanded, setExpanded] = useState(false);
+  const [tilt, setTilt]         = useState({ x:0, y:0 });
+  const cardRef = useRef(null);
   const isLive = sat.norad && pos && sat.status === "EN ÓRBITA";
   const color = sat.color || accentColor;
 
+  function onMouseMove(e) {
+    if (expanded) return;
+    const r = cardRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const x = ((e.clientX - r.left)  / r.width  - 0.5) * 7;
+    const y = -((e.clientY - r.top)   / r.height - 0.5) * 7;
+    setTilt({ x, y });
+  }
+  function onMouseLeave() { setTilt({ x:0, y:0 }); }
+
   return (
     <div
+      ref={cardRef}
       onClick={() => setExpanded(e => !e)}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
       style={{
         position:"relative", borderRadius:20, overflow:"hidden",
-        border:`1px solid ${color}28`, cursor:"pointer",
-        transition:"border-color 0.25s, transform 0.15s",
-        background:"rgba(0,0,0,0.5)",
+        border:`1px solid ${color}${expanded?"44":"22"}`,
+        cursor:"pointer",
+        background:"rgba(0,0,0,0.55)",
+        transform: expanded
+          ? "none"
+          : `perspective(800px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+        transition: expanded
+          ? "transform 0.3s ease, border-color 0.25s"
+          : "border-color 0.25s, box-shadow 0.25s",
+        boxShadow: expanded ? "none" : `0 ${4+Math.abs(tilt.y)}px ${16+Math.abs(tilt.x)*2}px rgba(0,0,0,0.3)`,
+        animation:`slideUp 0.4s ease ${index*0.07}s both`,
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = color+"55"; e.currentTarget.style.transform="translateY(-2px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = color+"28"; e.currentTarget.style.transform="translateY(0)"; }}
     >
       {/* Imagen de fondo */}
       <div style={{ height: expanded ? 260 : 180, overflow:"hidden", position:"relative", transition:"height 0.4s ease" }}>
         <img src={sat.bgPhoto} alt={sat.name}
-          style={{ width:"100%", height:"100%", objectFit:"cover", opacity:0.3, display:"block" }}
+          style={{ width:"100%", height:"100%", objectFit:"cover", opacity:0.3, display:"block", transition:"opacity 0.3s, transform 0.4s" }}
           onError={e => { e.target.style.display = "none"; }}
         />
         <div style={{ position:"absolute", inset:0, background:`linear-gradient(to bottom, ${color}08 0%, rgba(0,0,0,0.9) 100%)` }}/>
+
+        {/* Año */}
+        <div style={{ position:"absolute", top:14, left:16, fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"rgba(255,255,255,0.25)", letterSpacing:"0.18em" }}>{sat.year}</div>
+
+        {/* Badge estado */}
+        <div style={{ position:"absolute", top:14, right:14, fontFamily:"'IBM Plex Mono',monospace", fontSize:8, letterSpacing:"0.14em", padding:"3px 9px", borderRadius:99, background:sat.badgeColor+"22", border:`1px solid ${sat.badgeColor}44`, color:sat.badgeColor }}>{sat.badge}</div>
+
+        {/* Live dot */}
+        {isLive && (
+          <div style={{ position:"absolute", bottom:14, right:14, display:"flex", alignItems:"center", gap:5, padding:"3px 9px", borderRadius:99, background:"rgba(0,0,0,0.6)", border:`1px solid ${color}40` }}>
+            <span style={{ display:"block", width:4, height:4, borderRadius:"50%", background:"#4ade80", animation:"livePulse 2s infinite" }}/>
+            <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7.5, color:"#4ade80", letterSpacing:"0.1em" }}>EN VIVO</span>
+          </div>
+        )}
+
+        {/* Nombre */}
+        <div style={{ position:"absolute", bottom:14, left:16 }}>
+          <div style={{ fontFamily:"'Syne',sans-serif", fontSize:"clamp(18px,3vw,26px)", fontWeight:800, color:"#fff", lineHeight:1 }}>{sat.name}</div>
+          <div style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontSize:12, color, marginTop:3 }}>{sat.type}</div>
+        </div>
+      </div>
+
+      {/* Contenido */}
+      <div style={{ background:"rgba(0,0,0,0.7)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", padding:"16px 18px" }}>
+        {/* Meta rápida */}
 
         {/* Año */}
         <div style={{ position:"absolute", top:14, left:16, fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:"rgba(255,255,255,0.25)", letterSpacing:"0.18em" }}>{sat.year}</div>
@@ -622,12 +668,15 @@ export default function SatelitesLatam() {
         @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.02)}}
         @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes accentSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
-        .country-btn{transition:all 0.18s;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;}
-        .country-btn:hover{transform:translateY(-2px);}
+        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes gradientBorder{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        .country-btn{transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;}
+        .country-btn:hover{transform:translateY(-4px) scale(1.06);}
+        .country-btn:active{transform:scale(0.92);}
         .nav-link{text-decoration:none;transition:opacity 0.2s;white-space:nowrap;}
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
-        .sat-card-enter{animation:fadeUp 0.4s ease both;}
+        .sat-card-enter{animation:slideUp 0.4s ease both;}
         @media(max-width:700px){
           .nav-desktop{display:none!important;}
           .nav-hamburger{display:flex!important;}
@@ -801,7 +850,7 @@ export default function SatelitesLatam() {
             <div className="sats-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, paddingBottom:56 }}>
               {filteredSats.map((sat, i) => (
                 <div key={sat.id} className="sat-card-enter" style={{ animationDelay:`${i*0.07}s` }}>
-                  <SatCard sat={sat} pos={positions[sat.id]} accentColor={country.accentColor}/>
+                  <SatCard sat={sat} pos={positions[sat.id]} accentColor={country.accentColor} index={i}/>
                 </div>
               ))}
               {filteredSats.length === 0 && (

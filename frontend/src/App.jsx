@@ -774,14 +774,28 @@ function PassCard({ pass, sat, isNext, userCity = "Chile", setSharePreview }) {
     const t = setInterval(() => setCd(countdown(pass.rise)), 1000);
     return () => clearInterval(t);
   }, [isNext, pass.rise]);
+
   const q  = pass.max_el >= 60 ? "★★★ EXCELENTE" : pass.max_el >= 30 ? "★★ BUENO" : "★ BAJO";
   const qHuman = pass.max_el >= 60 ? `Visible ${Math.floor(pass.duration/60)}m a simple vista` : pass.max_el >= 30 ? `Visible con buen cielo` : `Necesita binoculares`;
   const qc = pass.max_el >= 60 ? "#34d399" : pass.max_el >= 30 ? "#fbbf24" : "#334155";
   const dur= `${Math.floor(pass.duration/60)}m ${pass.duration%60}s`;
+
+  // Urgencia basada en tiempo restante
+  const diffMs = new Date(pass.rise) - new Date();
+  const minsLeft = diffMs / 60000;
+  const isImminent = isNext && minsLeft <= 2;
+  const isClose    = isNext && minsLeft <= 10 && minsLeft > 2;
+  const cdColor = isImminent ? "#4ade80" : isClose ? "#57C7FF" : (isNext ? sat.color : "#F0F4F8");
+
+  // Arco de elevación — porcentaje de 0° a 90°
+  const elevPct = Math.round(Math.min(pass.max_el / 90, 1) * 100);
+
   return (
     <div
+      className={`pass-card${isImminent?" pass-card--imminent":isClose?" pass-card--close":""}`}
       onClick={()=>setOpen(!open)}
       style={{
+        "--sat-color": sat.color,
         background: open ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.018)",
         border: `1px solid ${isNext ? sat.color+"45" : "rgba(255,255,255,0.07)"}`,
         borderLeft: `2px solid ${isNext ? sat.color : "transparent"}`,
@@ -792,28 +806,50 @@ function PassCard({ pass, sat, isNext, userCity = "Chile", setSharePreview }) {
         marginBottom: 8,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+      {/* Pulso de fondo urgente */}
+      {(isImminent || isClose) && (
+        <div style={{
+          position:"absolute", inset:0, borderRadius:16,
+          background: isImminent
+            ? "radial-gradient(ellipse at 50% 50%, rgba(74,222,128,0.06) 0%, transparent 70%)"
+            : `radial-gradient(ellipse at 50% 50%, ${sat.color}06 0%, transparent 70%)`,
+          animation: "urgencyPulse 3s ease-in-out infinite",
+          pointerEvents: "none",
+        }}/>
+      )}
+      <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",position:"relative"}}>
         <div style={{minWidth:80}}>
           <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:26,fontWeight:600,color:"#F0F4F8",letterSpacing:"-0.01em"}}>{fmtTime(pass.rise)}</div>
-          <div style={{fontSize:9,color:"#334155",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{fmtDate(pass.rise)}</div>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{fmtDate(pass.rise)}</div>
         </div>
         <div style={{display:"flex",gap:5,flex:1,flexWrap:"wrap",alignItems:"center"}}>
           {isNext&&<span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.15em",padding:"3px 9px",borderRadius:20,background:sat.color+"14",color:sat.color,border:`1px solid ${sat.color}38`}}>PRÓXIMO</span>}
           {pass.timeInfo && <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:"rgba(255,255,255,0.04)",color:pass.timeInfo.color,border:`1px solid ${pass.timeInfo.color}30`}}>{pass.timeInfo.icon} {pass.timeInfo.label}</span>}
           {pass.reallyVisible && <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:"#22c55e10",color:"#4ade80",border:"1px solid #22c55e28"}}>👁 VISIBLE</span>}
           {pass.visible && !pass.reallyVisible && <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:"rgba(255,255,255,0.04)",color:"#475569",border:"1px solid rgba(255,255,255,0.06)"}}>Visible (de día)</span>}
-          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:qc+"10",color:qc,border:`1px solid ${qc}28`}}>{q} · {pass.max_el}°</span>
+          {/* Arco visual de elevación */}
+          <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:20,background:qc+"10",color:qc,border:`1px solid ${qc}28`}}>
+            <svg width="20" height="12" viewBox="0 0 20 12" style={{flexShrink:0}}>
+              <path d="M1 11 A9 9 0 0 1 19 11" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d={`M1 11 A9 9 0 0 1 ${1+18*(elevPct/100)} ${11 - Math.sin(Math.PI * elevPct/100) * 9}`} fill="none" stroke={qc} strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            {q} · {pass.max_el}°
+          </span>
         </div>
         <div style={{textAlign:"right"}}>
           {isNext&&cd
-            ?<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:20,fontWeight:600,color:sat.color,letterSpacing:"0.06em"}}>{cd}</div>
+            ?<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:20,fontWeight:600,color:cdColor,letterSpacing:"0.06em",transition:"color 0.8s ease"}}>{cd}</div>
             :<div style={{fontSize:13,color:sat.color,fontFamily:"'IBM Plex Mono',monospace",fontWeight:500}}>{timeUntil(pass.rise)}</div>
           }
-          <div style={{fontSize:9,color:"#1E3A50",marginTop:2,fontFamily:"monospace"}}>{dur}</div>
+          {isImminent && <div style={{fontSize:8,color:"#4ade80",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginTop:1}}>INMINENTE</div>}
+          {isClose && !isImminent && <div style={{fontSize:8,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginTop:1}}>PRÓXIMO</div>}
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.15)",marginTop:2,fontFamily:"monospace"}}>{dur}</div>
         </div>
-        <span style={{color:"#1E3A50",fontSize:10}}>{open?"▲":"▼"}</span>
+        <span style={{color:"rgba(255,255,255,0.15)",fontSize:10}}>{open?"▲":"▼"}</span>
       </div>
       {open&&(
         <div style={{marginTop:18,paddingTop:18,borderTop:"1px solid rgba(255,255,255,0.05)",display:"grid",gridTemplateColumns:"190px 1fr",gap:20}}>
@@ -821,23 +857,17 @@ function PassCard({ pass, sat, isNext, userCity = "Chile", setSharePreview }) {
           <div style={{display:"flex",flexDirection:"column",gap:9,justifyContent:"center"}}>
             {[["Salida",`${fmtTime(pass.rise)} · ${azLabel(pass.rise_az)} (${pass.rise_az}°)`],["Máximo",`${fmtTime(pass.max)} · ${pass.max_el}° elevación`],["Ocaso",`${fmtTime(pass.set)} · ${azLabel(pass.set_az)} (${pass.set_az}°)`],["Duración",dur],["Visibilidad",pass.visible?"✓ A simple vista":"○ Necesita telescopio"]].map(([l,v])=>(
               <div key={l} style={{display:"flex",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.035)",paddingBottom:7}}>
-                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"#334155",letterSpacing:"0.12em",textTransform:"uppercase"}}>{l}</span>
+                <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.25)",letterSpacing:"0.12em",textTransform:"uppercase"}}>{l}</span>
                 <span style={{fontSize:10.5,fontFamily:"'IBM Plex Mono',monospace",color:l==="Visibilidad"?(pass.visible?"#4ade80":"#334155"):"#E0E8F0"}}>{v}</span>
               </div>
             ))}
             <div style={{marginTop:5,padding:"12px 14px",background:sat.color+"08",borderRadius:12,border:`1px solid ${sat.color}14`}}>
-              <div style={{fontSize:7.5,color:"#1E3A50",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginBottom:5,textTransform:"uppercase"}}>Consejo de observación</div>
-              <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente — más rápido que un avión y sin parpadear. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares. Mira hacia el ${azLabel(pass.rise_az)}.`}</div>
+              <div style={{fontSize:7.5,color:"rgba(255,255,255,0.25)",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",marginBottom:5,textTransform:"uppercase"}}>Consejo de observación</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.7}}>{pass.visible?`Mira hacia el ${azLabel(pass.rise_az)} y busca un punto de luz moviéndose uniformemente — más rápido que un avión y sin parpadear. Alcanzará ${pass.max_el}° de altura sobre el horizonte.`:`Con ${pass.max_el}° de elevación máxima, se recomienda usar binoculares. Mira hacia el ${azLabel(pass.rise_az)}.`}</div>
             </div>
-            {/* Boton compartir */}
             <button
               onClick={e => { e.stopPropagation(); const r = generateShareCard({ pass, sat, city: userCity }); setSharePreview(r); }}
-              style={{
-                marginTop:12, display:"flex", alignItems:"center", gap:8,
-                padding:"10px 20px", borderRadius:12,
-                background:sat.color+"12", border:`1px solid ${sat.color}40`,
-                color:sat.color, fontFamily:"'IBM Plex Mono',monospace",
-                fontSize:11, letterSpacing:"0.12em",
+              style={{marginTop:12,display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:12,background:sat.color+"12",border:`1px solid ${sat.color}40`,color:sat.color,fontFamily:"'IBM Plex Mono',monospace",fontSize:11,letterSpacing:"0.12em",cursor:"pointer",transition:"all 0.2s"}}
                 cursor:"pointer", transition:"all 0.2s", width:"100%", justifyContent:"center",
               }}
               onMouseEnter={e=>e.currentTarget.style.background=sat.color+"22"}
@@ -1613,6 +1643,15 @@ export default function App() {
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes spinSlow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes shimmer{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+        @keyframes urgencyPulse{0%,100%{opacity:0.4}50%{opacity:1}}
+        @keyframes gradientBorder{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        @keyframes countPop{0%{transform:scale(1)}40%{transform:scale(1.12);filter:brightness(1.25)}100%{transform:scale(1)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        /* Pass card urgencia */
+        .pass-card{transition:transform 0.18s ease,box-shadow 0.18s;}
+        .pass-card:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(0,0,0,0.3);}
+        .pass-card--close{box-shadow:0 0 0 1px rgba(87,199,255,0.15);}
+        .pass-card--imminent{box-shadow:0 0 0 1px rgba(74,222,128,0.25);animation:urgencyPulse 3s ease-in-out infinite;}
         @keyframes issFloat{0%{transform:translate(0,0) scale(1) rotate(0deg)}25%{transform:translate(18px,-12px) scale(1.012) rotate(0.4deg)}50%{transform:translate(32px,6px) scale(1.018) rotate(-0.3deg)}75%{transform:translate(14px,20px) scale(1.008) rotate(0.5deg)}100%{transform:translate(0,0) scale(1) rotate(0deg)}}
         @keyframes issFadeIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
         @keyframes bgPulse{0%,100%{opacity:0.13}50%{opacity:0.19}}
@@ -1866,20 +1905,45 @@ export default function App() {
               </p>
 
               {/* Next pass — full card desktop, compact strip mobile */}
-              {next && (
-                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%"}}>
-                  <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
-                    <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · {userCity}</div>
+              {next && (() => {
+                const heroMinsLeft = (new Date(next.rise) - new Date()) / 60000;
+                const heroImminent = heroMinsLeft <= 2;
+                const heroClose    = heroMinsLeft <= 10 && heroMinsLeft > 2;
+                const heroAccent   = heroImminent ? "#4ade80" : heroClose ? "#57C7FF" : sat.color;
+                return (
+                  <div style={{
+                    display:"inline-flex",alignItems:"stretch",gap:0,
+                    borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%",
+                    position:"relative",
+                    boxShadow: heroImminent
+                      ? "0 0 0 1px rgba(74,222,128,0.3), 0 0 30px rgba(74,222,128,0.08)"
+                      : heroClose
+                      ? "0 0 0 1px rgba(87,199,255,0.2), 0 0 20px rgba(87,199,255,0.06)"
+                      : "none",
+                    transition:"box-shadow 0.8s ease",
+                  }}>
+                    {/* Línea de progreso temporal en la parte superior */}
+                    <div style={{
+                      position:"absolute",top:0,left:0,right:0,height:2,
+                      background:`linear-gradient(90deg, ${heroAccent}, transparent)`,
+                      opacity: heroClose || heroImminent ? 0.8 : 0.3,
+                      transition:"all 0.8s ease",
+                    }}/>
+                    <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
+                      <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
+                      <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:heroAccent,letterSpacing:"0.01em",transition:"color 0.8s ease"}}>{fmtTime(next.rise)}</div>
+                      <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3,fontFamily:"monospace"}}>{fmtDate(next.rise)} · {userCity}</div>
+                    </div>
+                    <div style={{padding:"14px 20px"}}>
+                      <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>
+                        {heroImminent ? "¡AHORA!" : heroClose ? "INMINENTE" : "Faltan"}
+                      </div>
+                      <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:heroAccent,letterSpacing:"0.01em",transition:"color 0.8s ease"}}>{timeUntil(next.rise)}</div>
+                      <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
+                    </div>
                   </div>
-                  <div style={{padding:"14px 20px"}}>
-                    <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Faltan</div>
-                    <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:"#fff",letterSpacing:"0.01em"}}>{timeUntil(next.rise)}</div>
-                    <div style={{fontSize:9,color:"rgba(255,255,255,0.2)",marginTop:3}}>Máx {next.max_el}°{next.visible?" · 👁 Visible":""}</div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             {/* Botón modo observación nocturna */}
             {next && (
               <button
