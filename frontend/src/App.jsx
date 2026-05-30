@@ -780,7 +780,6 @@ function PassCard({ pass, sat, isNext, userCity = "Chile", setSharePreview }) {
   const dur= `${Math.floor(pass.duration/60)}m ${pass.duration%60}s`;
   return (
     <div
-      className="pass-card"
       onClick={()=>setOpen(!open)}
       style={{
         background: open ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.018)",
@@ -1349,7 +1348,27 @@ export default function App() {
   const [nightPass, setNightPass]           = useState(null);
   const [alertToast, setAlertToast]         = useState(null);
   const [sharePreview, setSharePreview]     = useState(null); // { dataUrl, filename }
-  const [geoPrompt, setGeoPrompt]           = useState(true);  // splash bienvenida
+
+  // ── Geolocalización persistente ──────────────────────────────────────────────
+  // Leemos localStorage al montar — si ya tenemos coords guardadas, no mostramos el splash
+  const [geoPrompt, setGeoPrompt] = useState(() => {
+    try { return !localStorage.getItem("ao_lat"); } catch { return true; }
+  });
+
+  // Cargar coords guardadas al inicio
+  useEffect(() => {
+    try {
+      const lat = parseFloat(localStorage.getItem("ao_lat"));
+      const lon = parseFloat(localStorage.getItem("ao_lon"));
+      const city = localStorage.getItem("ao_city");
+      if (lat && lon) {
+        setUserLat(lat);
+        setUserLon(lon);
+        if (city) setUserCity(city);
+      }
+    } catch {}
+  }, []);
+
   const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -1359,14 +1378,25 @@ export default function App() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        setUserLat(coords.latitude);
-        setUserLon(coords.longitude);
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`)
+        const lat = coords.latitude;
+        const lon = coords.longitude;
+        setUserLat(lat);
+        setUserLon(lon);
+        // Guardar en localStorage para no volver a pedir
+        try { localStorage.setItem("ao_lat", lat); localStorage.setItem("ao_lon", lon); } catch {}
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
           .then(r => r.json())
-          .then(d => setUserCity(d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad"))
+          .then(d => {
+            const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad";
+            setUserCity(city);
+            try { localStorage.setItem("ao_city", city); } catch {}
+          })
           .catch(() => {});
       },
-      () => {}
+      () => {
+        // Si rechaza, guardar un flag para no volver a preguntar en esta sesión
+        try { localStorage.setItem("ao_lat", "-33.4489"); localStorage.setItem("ao_lon", "-70.6693"); localStorage.setItem("ao_city", "Santiago"); } catch {}
+      }
     );
   };
 
@@ -1589,13 +1619,6 @@ export default function App() {
         @keyframes bgPulse{0%,100%{opacity:0.13}50%{opacity:0.19}}
         @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.022)}}
-        @keyframes popIn{0%{opacity:0;transform:scale(0.88)}60%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-        @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-        @keyframes countPop{0%{transform:scale(1)}40%{transform:scale(1.15);filter:brightness(1.3)}100%{transform:scale(1)}}
-        @keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
         .nav-section-link{position:relative;text-decoration:none;transition:all 0.25s;white-space:nowrap;}
         .nav-section-link::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform 0.3s ease;}
         .nav-section-link:hover::after,.nav-section-link.active::after{transform:scaleX(1);}
@@ -1656,16 +1679,16 @@ export default function App() {
           /* Hero mobile */
           .hero-mobile-next{display:flex!important;}
           .hero-description{display:none!important;}
-          .hero-padding{padding:28px 0 22px!important;}
-          .hero-title-line{font-size:30px!important;line-height:1.1!important;}
-          .hero-title-italic{font-size:32px!important;}
-          .hero-badge{margin-bottom:16px!important;}
+          .hero-padding{padding:32px 0 28px!important;}
+          .hero-title-line{font-size:32px!important;}
+          .hero-title-italic{font-size:34px!important;}
+          .hero-badge{margin-bottom:18px!important;}
 
           /* Earth bg smaller on mobile */
           .earth-bg-img{width:110vw!important;height:110vw!important;opacity:0.15!important;}
 
           /* Content padding */
-          .page-padding{padding:0 14px!important;}
+          .page-padding{padding:0 16px!important;}
 
           /* Sat picker — smaller pills */
           .sat-picker-label{font-size:7px!important;}
@@ -1678,45 +1701,7 @@ export default function App() {
           .next-pass-card{flex-direction:column!important;gap:0!important;}
           .next-pass-cell{padding:12px 16px!important;font-size:26px!important;}
           .next-pass-cell-time{font-size:26px!important;}
-
-          /* Bottom safe area */
-          .page-padding{padding-bottom:80px!important;}
         }
-
-        /* FAB nocturno — solo mobile */
-        .night-fab{
-          display:none;
-          position:fixed;bottom:24px;right:18px;z-index:180;
-          width:54px;height:54px;border-radius:50%;
-          align-items:center;justify-content:center;
-          font-size:22px;cursor:pointer;border:none;
-          backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-          box-shadow:0 4px 24px rgba(0,0,0,0.6);
-          transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s;
-          -webkit-tap-highlight-color:transparent;animation:floatY 3s ease-in-out infinite;
-        }
-        .night-fab:active{transform:scale(0.88)!important;animation:none;}
-        @media(max-width:600px){.night-fab{display:flex!important;}}
-
-        /* Pass card hover */
-        .pass-card{transition:transform 0.18s ease,border-color 0.18s,box-shadow 0.18s;}
-        .pass-card:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(0,0,0,0.35);}
-        .pass-card:active{transform:scale(0.985);}
-
-        /* Sat pill tap feedback */
-        .sat-pill{transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);}
-        .sat-pill:hover{transform:translateY(-1px);}
-        .sat-pill:active{transform:scale(0.94);}
-
-        /* Country pill bounce */
-        .country-pill{transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1);}
-        .country-pill:hover{transform:scale(1.08);}
-        .country-pill:active{transform:scale(0.92);}
-
-        /* Ticker tape */
-        .ticker-wrap{overflow:hidden;white-space:nowrap;mask-image:linear-gradient(to right,transparent 0%,black 8%,black 92%,transparent 100%);}
-        .ticker-inner{display:inline-flex;gap:48px;animation:ticker 28s linear infinite;}
-        .ticker-inner:hover{animation-play-state:paused;}
 
         /* Nav on mobile: just logo + hamburger */
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
@@ -1805,6 +1790,7 @@ export default function App() {
           {menuOpen && (
             <div className="mobile-menu" onClick={()=>setMenuOpen(false)}>
               <a href="/" className="active">Rastreo</a>
+              <a href="/satelites-chilenos">Satélites LATAM</a>
               <a href="/lanzamientos">Lanzamientos</a>
               <a href="/espacio">Clima espacial</a>
               <a href="/noticias">Noticias</a>
@@ -1835,7 +1821,7 @@ export default function App() {
             {/* ── DESKTOP: section links centradas ── */}
             <div className="nav-desktop-sections" style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
               <a href="/" className="nav-section-link active" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#fff",padding:"8px 18px",borderRadius:99,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}>Rastreo</a>
-              <a href="/satelites-chilenos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Satélites 🇨🇱</a>
+              <a href="/satelites-chilenos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Satélites LATAM</a>
               <a href="/lanzamientos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Lanzamientos</a>
               <a href="/espacio" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Clima espacial</a>
               <a href="/noticias" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Noticias</a>
@@ -1876,45 +1862,21 @@ export default function App() {
                 <span style={{fontSize:8.5,fontFamily:"'IBM Plex Mono',monospace",color:sat.color,letterSpacing:"0.2em",textTransform:"uppercase"}}>Datos reales · Skyfield + CelesTrak</span>
               </div>
 
-              {/* Title — staggered */}
+              {/* Title */}
               <h1 style={{marginBottom:16,lineHeight:1.08,letterSpacing:"-0.02em"}}>
-                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(14px,2vw,20px)",fontWeight:400,color:"rgba(255,255,255,0.4)",display:"block",marginBottom:4,animation:"fadeUp 0.7s ease 0.05s both"}}>{greeting}, desde {userCity}</span>
-                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"#fff",display:"block",animation:"fadeUp 0.7s ease 0.1s both"}}>El espacio está</span>
-                <span className="hero-title-italic" style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(30px,3.8vw,50px)",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",display:"block",animation:"fadeUp 0.7s ease 0.18s both"}}>sobre {userCity}</span>
-                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block",animation:"fadeUp 0.7s ease 0.26s both"}}>ahora mismo.</span>
+                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.5)",display:"block",fontSize:"clamp(16px,2vw,22px)",fontWeight:400,marginBottom:4}}>{greeting}, desde {userCity}</span>
+                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"#fff",display:"block"}}>El espacio está</span>
+                <span className="hero-title-italic" style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(30px,3.8vw,50px)",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",display:"block"}}>sobre {userCity}</span>
+                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
               </h1>
 
-              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32,animation:"fadeUp 0.7s ease 0.34s both"}}>
+              <p className="hero-description" style={{fontSize:15,color:"rgba(255,255,255,0.35)",lineHeight:1.8,fontWeight:300,maxWidth:420,marginBottom:32}}>
                 {`Pases calculados en tiempo real sobre ${userCity}. Satélites locales, estaciones espaciales internacionales y más.`}
               </p>
 
-              {/* Ticker tape del sat activo */}
-              {pos && (
-                <div className="ticker-wrap" style={{marginBottom:20,borderRadius:8,border:"1px solid rgba(255,255,255,0.05)",background:"rgba(255,255,255,0.015)",padding:"7px 0",animation:"fadeUp 0.7s ease 0.4s both"}}>
-                  <div className="ticker-inner" style={{gap:"64px"}}>
-                    {[
-                      `🛰 ${sat.name}`,
-                      `ALT ${pos.alt_km?.toFixed(0)} km`,
-                      `${pos.lat?.toFixed(1)}°, ${pos.lon?.toFixed(1)}°`,
-                      pos.visible_from_santiago ? `✓ EN RANGO` : `○ FUERA DE RANGO`,
-                      `${sat.speed}`,
-                      `NORAD ${sat.norad}`,
-                      `🛰 ${sat.name}`,
-                      `ALT ${pos.alt_km?.toFixed(0)} km`,
-                      `${pos.lat?.toFixed(1)}°, ${pos.lon?.toFixed(1)}°`,
-                      pos.visible_from_santiago ? `✓ EN RANGO` : `○ FUERA DE RANGO`,
-                      `${sat.speed}`,
-                      `NORAD ${sat.norad}`,
-                    ].map((t,i) => (
-                      <span key={i} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:i%6===3?(pos.visible_from_santiago?"#4ade80":"#475569"):sat.color,letterSpacing:"0.14em",opacity:0.8}}>{t}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Next pass — full card desktop, compact strip mobile */}
               {next && (
-                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%",animation:"popIn 0.5s ease 0.45s both"}}>
+                <div style={{display:"inline-flex",alignItems:"stretch",gap:0,borderRadius:16,overflow:"hidden",...glass({}),maxWidth:"100%"}}>
                   <div style={{padding:"14px 20px",borderRight:"1px solid rgba(255,255,255,0.06)"}}>
                     <div style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.2em",color:"rgba(255,255,255,0.25)",textTransform:"uppercase",marginBottom:5}}>Próximo · {sat.name}</div>
                     <div className="next-pass-cell-time" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:30,fontWeight:600,color:sat.color,letterSpacing:"0.01em"}}>{fmtTime(next.rise)}</div>
@@ -2251,11 +2213,7 @@ export default function App() {
                 <>
                   {loading&&<div style={{padding:52,textAlign:"center"}}><div style={{fontSize:24,marginBottom:14,display:"inline-block",animation:"spinSlow 3s linear infinite"}}>🛰</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:sat.color,letterSpacing:"0.16em",marginBottom:8}}>CALCULANDO TRAYECTORIA ORBITAL</div><div style={{display:"flex",gap:5,justifyContent:"center"}}>{[0,1,2].map(i=><span key={i} style={{display:"block",width:4,height:4,borderRadius:"50%",background:sat.color,animation:`livePulse 1.4s ease-in-out ${i*0.22}s infinite`}}/>)}</div></div>}
                   {error&&<div style={{padding:32,textAlign:"center",border:"1px dashed rgba(244,63,94,0.2)",borderRadius:16,background:"rgba(244,63,94,0.04)"}}><div style={{fontSize:22,marginBottom:10}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
-                  {!loading&&!error&&shown.map((p,i)=>(
-                    <div key={i} style={{animation:`fadeUp 0.4s ease ${Math.min(i*0.06,0.5)}s both`}}>
-                      <PassCard pass={p} sat={sat} isNext={i===0} userCity={userCity} setSharePreview={setSharePreview}/>
-                    </div>
-                  ))}
+                  {!loading&&!error&&shown.map((p,i)=><PassCard key={i} pass={p} sat={sat} isNext={i===0} userCity={userCity} setSharePreview={setSharePreview}/>)}
                   {!loading&&!error&&shown.length===0&&<div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16}}><div style={{fontSize:24,marginBottom:10}}>🌑</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9.5,color:"rgba(255,255,255,0.15)",letterSpacing:"0.1em"}}>Sin pases en los próximos 3 días</div></div>}
                 </>
               )}
@@ -2391,22 +2349,6 @@ export default function App() {
 
       {nightMode && nightPass && (
         <NightMode pass={nightPass} sat={sat} onClose={() => setNightMode(false)} />
-      )}
-
-      {/* FAB nocturno — solo mobile, aparece cuando hay un pase próximo */}
-      {next && !nightMode && (
-        <button
-          className="night-fab"
-          onClick={() => { setNightPass(next); setNightMode(true); navigator.vibrate?.(40); }}
-          style={{
-            background:`linear-gradient(135deg, rgba(0,0,0,0.9), ${sat.color}30)`,
-            border:`1px solid ${sat.color}50`,
-            color:"#fff",
-          }}
-          title="Modo observación nocturna"
-        >
-          🌙
-        </button>
       )}
     </>
   );

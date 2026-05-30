@@ -33,13 +33,11 @@ SATELLITE_IDS = {
     "LEMU":      60532,   # LEMU NGE (privado)
     "SUCHAI2":   57757,   # SUCHAI-2 (U. de Chile)
     "SUCHAI3":   57758,   # SUCHAI-3 (U. de Chile)
-    "PLANTSAT":  52188,   # PlantSat (U. de Chile) — experimento biológico
     "PLANTSAT":  52188,   # PlantSat (U. de Chile)
 
     # ── ARGENTINA 🇦🇷 ──────────────────────────────────
     "ARSAT1":    40272,   # ARSAT-1 (GEO, posicion fija)
     "ARSAT2":    40941,   # ARSAT-2 (GEO, posicion fija)
-    "ARSAT3":    44507,   # ARSAT-SG1 (GEO, posicion fija)
 
     # ── BRASIL 🇧🇷 ─────────────────────────────────────
     "AMAZONIA1": 47699,   # Amazonia-1 (observacion terrestre)
@@ -65,7 +63,7 @@ SATELLITE_IDS = {
 }
 
 # Satelites GEO — orbita fija, no generan pases visibles desde tierra
-GEO_SATS = {"ARSAT1", "ARSAT2", "ARSAT3", "SGDC", "MORELOS3", "TUPAC", "VENESAT"}
+GEO_SATS = {"ARSAT1", "ARSAT2", "SGDC", "MORELOS3", "TUPAC", "VENESAT"}
 
 # Satelites historicos que ya reingresaron — solo informacion, sin TLE activo
 REINGRESED_SATS = {"LIBERTAD1", "PEGASO"}
@@ -104,6 +102,9 @@ _TLE_FALLBACK = {
     "LEMU":    ("LEMU NGE",     "1 60532U 24122A   24001.50000000  .00001000  00000-0  50000-4 0  9990", "2 60532  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 10000"),
     "SUCHAI2": ("SUCHAI-2",     "1 57757U 23009AH  24001.50000000  .00001500  00000-0  80000-4 0  9993", "2 57757  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 50000"),
     "SUCHAI3": ("SUCHAI-3",     "1 57758U 23009AJ  24001.50000000  .00001500  00000-0  80000-4 0  9992", "2 57758  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 50000"),
+    "PLANTSAT":("PLANTSAT",     "1 52188U 22026B   24001.50000000  .00001500  00000-0  80000-4 0  9997", "2 52188  97.5000 100.0000 0001000  90.0000 270.0000 15.15000000 50000"),
+    "AMAZONIA1":("AMAZONIA-1",  "1 47699U 21015A   24001.50000000  .00000800  00000-0  40000-4 0  9998", "2 47699  98.4000  90.0000 0001200  90.0000 270.0000 14.40000000 90000"),
+    "PERUSAT1":("PERUSAT-1",    "1 41818U 16059A   24001.50000000  .00000500  00000-0  25000-4 0  9996", "2 41818  98.2000  90.0000 0001000  90.0000 270.0000 14.81000000120000"),
 }
 
 
@@ -453,7 +454,6 @@ def position(sat_id: str, lat: float = -33.4489, lon: float = -70.6693):
             "ARSAT1": -71.8, "ARSAT2": -81.0,
             "SGDC": -75.0, "MORELOS3": -116.8,
             "TUPAC": -87.2, "VENESAT": -78.0,
-            "ARSAT3": -81.1,
         }
         lon = geo_lons.get(sid, -75.0)
         return {
@@ -486,6 +486,172 @@ async def refresh_news():
         os.remove(NEWS_CACHE_FILE)
     articles = await get_news_cached()
     return {"status": "actualizado", "count": len(articles)}
+
+# ── Noticias LATAM ─────────────────────────────────────────────────────────────
+
+LATAM_SEARCH_TERMS = [
+    "chile", "argentina", "brazil", "brasil", "mexico",
+    "colombia", "peru", "venezuela", "bolivia", "ecuador",
+    "latin america", "south america", "atacama", "alma telescope",
+    "CONAE", "INPE", "INVAP", "ARSAT", "SUCHAI", "LEMU",
+    "andes", "amazon", "patagonia", "southern hemisphere",
+]
+
+LATAM_KEYWORDS_LOWER = [
+    "chile", "chileno", "chilena", "argentina", "argentino",
+    "brasil", "brazil", "brasileiro", "brasileno",
+    "mexico", "mexicano", "colombia", "colombiano",
+    "peru", "peruano", "venezuela", "bolivar",
+    "bolivia", "boliviano", "ecuador", "ecuatoriano",
+    "latin america", "latinoamerica", "south america", "sudamerica",
+    "atacama", "alma", "paranal", "eso observatory", "cerro",
+    "conae", "inpe", "invap", "arsat", "suchai", "lemu",
+    "andes", "amazon", "patagonia", "southern hemisphere",
+    "hemisferio sur", "aurora austral",
+]
+
+_latam_cache: dict = {"date": None, "articles": []}
+LATAM_CACHE_FILE = "latam_news_cache.json"
+
+
+def is_latam(article: dict) -> bool:
+    text = (
+        (article.get("title") or "") + " " +
+        (article.get("title_en") or "") + " " +
+        (article.get("summary") or "")
+    ).lower()
+    return any(kw in text for kw in LATAM_KEYWORDS_LOWER)
+
+
+async def fetch_latam_news() -> list:
+    meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
+    seen_urls: set = set()
+    articles = []
+
+    async with httpx.AsyncClient(timeout=12) as client:
+        # 1. Buscar con múltiples términos en la API
+        for term in LATAM_SEARCH_TERMS[:10]:
+            try:
+                r = await client.get(
+                    f"https://api.spaceflightnewsapi.net/v4/articles/?limit=5&ordering=-published_at&search={term}"
+                )
+                for a in r.json().get("results", []):
+                    if a["url"] not in seen_urls:
+                        seen_urls.add(a["url"])
+                        try:
+                            pub = datetime.fromisoformat(a["published_at"].replace("Z", "+00:00"))
+                            articles.append({
+                                "title":         translate(a["title"]),
+                                "title_en":      a["title"],
+                                "summary":       translate(a.get("summary", "")[:400]),
+                                "url":           a["url"],
+                                "image":         a.get("image_url", ""),
+                                "source":        a["news_site"],
+                                "published":     f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}",
+                                "published_raw": a["published_at"],
+                                "latam":         True,
+                            })
+                        except Exception:
+                            pass
+            except Exception as e:
+                print(f"[LATAM NEWS] search '{term}': {e}")
+
+        # 2. Filtrar artículos globales que también sean LATAM
+        for a in _news_cache.get("articles", []):
+            if a.get("url") not in seen_urls and is_latam(a):
+                seen_urls.add(a.get("url",""))
+                articles.append({**a, "latam": True})
+
+        # 3. Barrido amplio de últimos 50 artículos globales
+        try:
+            r = await client.get(
+                "https://api.spaceflightnewsapi.net/v4/articles/?limit=50&ordering=-published_at"
+            )
+            for a in r.json().get("results", []):
+                if a["url"] in seen_urls:
+                    continue
+                if any(kw in (a.get("title","") + " " + a.get("summary","")).lower()
+                       for kw in LATAM_KEYWORDS_LOWER):
+                    seen_urls.add(a["url"])
+                    try:
+                        pub = datetime.fromisoformat(a["published_at"].replace("Z", "+00:00"))
+                        articles.append({
+                            "title":         translate(a["title"]),
+                            "title_en":      a["title"],
+                            "summary":       translate(a.get("summary","")[:400]),
+                            "url":           a["url"],
+                            "image":         a.get("image_url",""),
+                            "source":        a["news_site"],
+                            "published":     f"{pub.day} {meses[pub.month-1]} {pub.year} · {pub.strftime('%H:%M')}",
+                            "published_raw": a["published_at"],
+                            "latam":         True,
+                        })
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[LATAM NEWS] bulk scan: {e}")
+
+    articles.sort(key=lambda a: a.get("published_raw",""), reverse=True)
+    return articles[:20]
+
+
+async def get_latam_news_cached() -> list:
+    global _latam_cache
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not _latam_cache["articles"]:
+        try:
+            with open(LATAM_CACHE_FILE, "r", encoding="utf-8") as f:
+                _latam_cache = json.load(f)
+        except Exception:
+            pass
+    if _latam_cache.get("date") == today and _latam_cache.get("articles"):
+        return _latam_cache["articles"]
+    print("[LATAM NEWS] Actualizando...")
+    await get_news_cached()  # asegura que la caché global esté lista
+    try:
+        arts = await fetch_latam_news()
+        _latam_cache = {"date": today, "articles": arts}
+        with open(LATAM_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(_latam_cache, f, ensure_ascii=False, indent=2)
+        return arts
+    except Exception as e:
+        print(f"[LATAM NEWS] Error: {e}")
+        return _latam_cache.get("articles", [])
+
+
+@app.get("/news/latam")
+async def news_latam():
+    articles = await get_latam_news_cached()
+    return {"articles": articles, "count": len(articles)}
+
+
+COUNTRY_KEYWORDS_MAP = {
+    "CL": ["chile","chileno","chilena","ssot","suchai","lemu","fasat","plantsat","atacama","paranal","alma","fach"],
+    "AR": ["argentina","argentino","arsat","invap","conae","patagonia"],
+    "BR": ["brasil","brazil","brasileiro","inpe","amazonia","amazon","embratel"],
+    "MX": ["mexico","mexicano","morelos","unam"],
+    "CO": ["colombia","colombiano"],
+    "PE": ["peru","peruano","perusat","conida"],
+    "VE": ["venezuela","venezolano","venesat"],
+    "BO": ["bolivia","boliviano","tupac"],
+    "EC": ["ecuador","ecuatoriano"],
+}
+
+
+@app.get("/news/country/{code}")
+async def news_by_country(code: str):
+    kws = COUNTRY_KEYWORDS_MAP.get(code.upper(), [])
+    all_articles = _news_cache.get("articles", []) + _latam_cache.get("articles", [])
+    seen, result = set(), []
+    for a in all_articles:
+        url = a.get("url","")
+        if url in seen:
+            continue
+        text = ((a.get("title","")) + " " + (a.get("title_en","")) + " " + (a.get("summary",""))).lower()
+        if any(kw in text for kw in kws):
+            seen.add(url)
+            result.append({**a, "country_match": code.upper()})
+    return {"articles": result[:12], "count": len(result), "country": code.upper()}
 
 @app.get("/spaceweather/kp")
 async def kp_index():
