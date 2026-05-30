@@ -1348,27 +1348,7 @@ export default function App() {
   const [nightPass, setNightPass]           = useState(null);
   const [alertToast, setAlertToast]         = useState(null);
   const [sharePreview, setSharePreview]     = useState(null); // { dataUrl, filename }
-
-  // ── Geolocalización persistente ──────────────────────────────────────────────
-  // Leemos localStorage al montar — si ya tenemos coords guardadas, no mostramos el splash
-  const [geoPrompt, setGeoPrompt] = useState(() => {
-    try { return !localStorage.getItem("ao_lat"); } catch { return true; }
-  });
-
-  // Cargar coords guardadas al inicio
-  useEffect(() => {
-    try {
-      const lat = parseFloat(localStorage.getItem("ao_lat"));
-      const lon = parseFloat(localStorage.getItem("ao_lon"));
-      const city = localStorage.getItem("ao_city");
-      if (lat && lon) {
-        setUserLat(lat);
-        setUserLon(lon);
-        if (city) setUserCity(city);
-      }
-    } catch {}
-  }, []);
-
+  const [geoPrompt, setGeoPrompt]           = useState(true);  // splash bienvenida
   const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -1378,25 +1358,14 @@ export default function App() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const lat = coords.latitude;
-        const lon = coords.longitude;
-        setUserLat(lat);
-        setUserLon(lon);
-        // Guardar en localStorage para no volver a pedir
-        try { localStorage.setItem("ao_lat", lat); localStorage.setItem("ao_lon", lon); } catch {}
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+        setUserLat(coords.latitude);
+        setUserLon(coords.longitude);
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`)
           .then(r => r.json())
-          .then(d => {
-            const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad";
-            setUserCity(city);
-            try { localStorage.setItem("ao_city", city); } catch {}
-          })
+          .then(d => setUserCity(d.address?.city || d.address?.town || d.address?.village || d.address?.county || "tu ciudad"))
           .catch(() => {});
       },
-      () => {
-        // Si rechaza, guardar un flag para no volver a preguntar en esta sesión
-        try { localStorage.setItem("ao_lat", "-33.4489"); localStorage.setItem("ao_lon", "-70.6693"); localStorage.setItem("ao_city", "Santiago"); } catch {}
-      }
+      () => {}
     );
   };
 
@@ -1649,62 +1618,88 @@ export default function App() {
           .nav-desktop-clock{display:none!important;}
           .nav-hamburger{display:flex!important;}
           .nav-live-badge{display:none!important;}
-          /* Ocultar tabs Pases/Noticias en mobile — noticias va por su propia página */
           .section-tabs-desktop{display:none!important;}
 
-          /* Ficha técnica — visible en mobile, oculta en desktop */
+          /* Ficha técnica */
           .ficha-mobile{display:block!important;}
           .ficha-desktop{display:none!important;}
 
           /* Mobile menu drawer */
           .mobile-menu{
-            display:flex;flex-direction:column;gap:4px;
-            position:fixed;top:0;left:0;right:0;
-            background:rgba(0,0,0,0.97);
-            border-bottom:1px solid rgba(255,255,255,0.08);
-            backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
-            padding:80px 24px 24px;
+            display:flex;flex-direction:column;gap:0;
+            position:fixed;top:0;left:0;right:0;bottom:0;
+            background:rgba(0,0,0,0.98);
+            backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
+            padding:100px 28px 40px;
             z-index:150;
-            animation:fadeUp 0.2s ease both;
+            animation:fadeUp 0.25s ease both;
+            overflow-y:auto;
           }
           .mobile-menu a{
-            font-family:'Syne',sans-serif;font-size:22px;font-weight:700;
-            color:rgba(255,255,255,0.7);text-decoration:none;
-            padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.06);
-            transition:color 0.2s;letter-spacing:0.02em;
+            font-family:'Syne',sans-serif;font-size:28px;font-weight:700;
+            color:rgba(255,255,255,0.5);text-decoration:none;
+            padding:18px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+            transition:color 0.15s;letter-spacing:-0.01em;
+            display:flex;align-items:center;gap:10px;
           }
           .mobile-menu a.active{color:#fff;}
+          .mobile-menu a:hover{color:rgba(255,255,255,0.85);}
           .mobile-menu a:last-child{border-bottom:none;}
 
-          /* Hero mobile */
-          .hero-mobile-next{display:flex!important;}
+          /* Hero mobile — compacto y limpio */
+          .hero-greeting{display:none!important;}
+          .hero-badge{display:none!important;}
           .hero-description{display:none!important;}
-          .hero-padding{padding:32px 0 28px!important;}
-          .hero-title-line{font-size:32px!important;}
-          .hero-title-italic{font-size:34px!important;}
-          .hero-badge{margin-bottom:18px!important;}
+          .hero-ticker{display:none!important;}
+          .hero-padding{padding:20px 0 16px!important;}
+          .hero-title-line{font-size:clamp(26px,7.5vw,38px)!important;line-height:1.12!important;}
+          .hero-title-italic{font-size:clamp(28px,8vw,40px)!important;line-height:1.1!important;}
 
-          /* Earth bg smaller on mobile */
-          .earth-bg-img{width:110vw!important;height:110vw!important;opacity:0.15!important;}
+          /* En mobile el h1 es más compacto */
+          h1{margin-bottom:12px!important;}
+
+          /* Earth bg — más sutil en mobile */
+          .earth-bg-img{width:100vw!important;height:100vw!important;opacity:0.1!important;}
 
           /* Content padding */
-          .page-padding{padding:0 16px!important;}
+          .page-padding{padding:0 14px!important;padding-bottom:80px!important;}
 
-          /* Sat picker — smaller pills */
+          /* Sat picker */
           .sat-picker-label{font-size:7px!important;}
 
           /* Pass cards */
           .pass-time-num{font-size:20px!important;}
           .pass-cd{font-size:16px!important;}
 
-          /* Mobile next pass strip — compact */
-          .next-pass-card{flex-direction:column!important;gap:0!important;}
-          .next-pass-cell{padding:12px 16px!important;font-size:26px!important;}
-          .next-pass-cell-time{font-size:26px!important;}
+          /* Next pass card — compacto en mobile */
+          .next-pass-card{flex-direction:row!important;}
+          .next-pass-cell-time{font-size:22px!important;}
+
+          /* Hero grid — una columna en mobile */
+          .hero-grid{grid-template-columns:1fr!important;gap:0!important;padding:20px 0 16px!important;}
+          .planet-col{display:none!important;}
+
+          /* Ocultar el modo observación nocturna en hero mobile — ya está en FAB */
+          .night-mode-btn-hero{display:none!important;}
+
+          /* Ticker — oculto en mobile */
+          .ticker-wrap{display:none!important;}
         }
 
-        /* Nav on mobile: just logo + hamburger */
-        .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
+        /* FAB nocturno — solo mobile */
+        .night-fab{
+          display:none;
+          position:fixed;bottom:28px;right:18px;z-index:180;
+          width:54px;height:54px;border-radius:50%;
+          align-items:center;justify-content:center;
+          font-size:22px;cursor:pointer;border:none;
+          backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+          box-shadow:0 4px 24px rgba(0,0,0,0.6);
+          transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+          -webkit-tap-highlight-color:transparent;
+        }
+        .night-fab:active{transform:scale(0.88)!important;}
+        @media(max-width:600px){.night-fab{display:flex!important;}}align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         .nav-hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4.5px,4.5px);}
         .nav-hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
@@ -1821,7 +1816,7 @@ export default function App() {
             {/* ── DESKTOP: section links centradas ── */}
             <div className="nav-desktop-sections" style={{display:"flex",alignItems:"center",gap:2,flex:1,justifyContent:"center"}}>
               <a href="/" className="nav-section-link active" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"#fff",padding:"8px 18px",borderRadius:99,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)"}}>Rastreo</a>
-              <a href="/satelites-chilenos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Satélites LATAM</a>
+              <a href="/satelites-chilenos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Satélites 🇨🇱</a>
               <a href="/lanzamientos" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Lanzamientos</a>
               <a href="/espacio" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Clima espacial</a>
               <a href="/noticias" className="nav-section-link" style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,letterSpacing:"0.08em",color:"rgba(255,255,255,0.5)",padding:"8px 18px",borderRadius:99,border:"1px solid transparent"}}>Noticias</a>
@@ -1864,7 +1859,7 @@ export default function App() {
 
               {/* Title */}
               <h1 style={{marginBottom:16,lineHeight:1.08,letterSpacing:"-0.02em"}}>
-                <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.5)",display:"block",fontSize:"clamp(16px,2vw,22px)",fontWeight:400,marginBottom:4}}>{greeting}, desde {userCity}</span>
+                <span className="hero-greeting" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(14px,2vw,20px)",fontWeight:400,color:"rgba(255,255,255,0.4)",display:"block",marginBottom:4}}>{greeting}, desde {userCity}</span>
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"#fff",display:"block"}}>El espacio está</span>
                 <span className="hero-title-italic" style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(30px,3.8vw,50px)",fontStyle:"italic",fontWeight:400,color:sat.color,transition:"color 0.6s",display:"block"}}>sobre {userCity}</span>
                 <span className="hero-title-line" style={{fontFamily:"'Syne',sans-serif",fontSize:"clamp(28px,3.5vw,46px)",fontWeight:800,color:"rgba(255,255,255,0.85)",display:"block"}}>ahora mismo.</span>
@@ -1892,6 +1887,7 @@ export default function App() {
             {/* Botón modo observación nocturna */}
             {next && (
               <button
+                className="night-mode-btn-hero"
                 onClick={() => {
                   setNightPass(next);
                   setNightMode(true);
@@ -2349,6 +2345,18 @@ export default function App() {
 
       {nightMode && nightPass && (
         <NightMode pass={nightPass} sat={sat} onClose={() => setNightMode(false)} />
+      )}
+
+      {/* FAB nocturno — solo visible en mobile */}
+      {next && !nightMode && (
+        <button
+          className="night-fab"
+          onClick={() => { setNightPass(next); setNightMode(true); navigator.vibrate?.(40); }}
+          style={{
+            background:`linear-gradient(135deg,rgba(5,8,22,0.95),${sat.color}30)`,
+            border:`1px solid ${sat.color}50`,
+          }}
+        >🌙</button>
       )}
     </>
   );
