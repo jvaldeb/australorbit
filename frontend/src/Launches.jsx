@@ -119,7 +119,9 @@ function LaunchCard({ launch, isNext }) {
   const img      = !imgErr && (launch.image?.image_url || launch.image?.thumbnail_url || null);
 
   return (
-    <div style={{borderRadius:16,border:`1px solid ${isNext?"rgba(87,199,255,0.28)":"rgba(255,255,255,0.07)"}`,background:"rgba(255,255,255,0.014)",backdropFilter:"blur(10px)",marginBottom:12,overflow:"hidden",transition:"all 0.2s",boxShadow:isNext?"0 0 30px rgba(87,199,255,0.06)":"none"}}
+    <div
+      className={`launch-card${isNext?" next-launch-border":""}`}
+      style={{borderRadius:16,border:`1px solid ${isNext?"rgba(87,199,255,0.28)":"rgba(255,255,255,0.07)"}`,background:"rgba(255,255,255,0.014)",backdropFilter:"blur(10px)",marginBottom:12,overflow:"hidden",boxShadow:isNext?"0 0 30px rgba(87,199,255,0.06)":"none"}}
       onMouseEnter={e=>{if(!isNext)e.currentTarget.style.borderColor="rgba(255,255,255,0.14)";}}
       onMouseLeave={e=>{if(!isNext)e.currentTarget.style.borderColor="rgba(255,255,255,0.07)";}}>
       {img && (
@@ -224,13 +226,53 @@ export default function Launches() {
         @keyframes auroraF2{0%,100%{transform:translate(0,0)}50%{transform:translate(2%,3%)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes shimmer{0%{opacity:0.4}50%{opacity:1}100%{opacity:0.4}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes countFlip{0%{transform:rotateX(0deg);opacity:1}49%{transform:rotateX(-90deg);opacity:0}50%{transform:rotateX(90deg);opacity:0}100%{transform:rotateX(0deg);opacity:1}}
+        @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+        /* Launch card — lift hover */
+        .launch-card{transition:transform 0.2s cubic-bezier(0.34,1.2,0.64,1),border-color 0.2s,box-shadow 0.2s;}
+        .launch-card:hover{transform:translateY(-3px);box-shadow:0 10px 36px rgba(0,0,0,0.4);}
+        .launch-card:active{transform:scale(0.99);}
+        .launch-card img{transition:transform 0.45s ease,opacity 0.3s;}
+        .launch-card:hover img{transform:scale(1.04)!important;opacity:0.88!important;}
+
+        /* Provider filter pill */
+        .provider-pill{transition:all 0.18s cubic-bezier(0.34,1.4,0.64,1);}
+        .provider-pill:hover{transform:translateY(-2px) scale(1.04);}
+        .provider-pill:active{transform:scale(0.92);}
+
+        /* Skeleton shimmer */
+        .skeleton-launch{
+          border-radius:16px;border:1px solid rgba(255,255,255,0.05);
+          background:linear-gradient(90deg,rgba(255,255,255,0.03) 0%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 100%);
+          background-size:200% 100%;animation:shimmer 1.8s ease-in-out infinite;
+          margin-bottom:12px;
+        }
+
+        /* Next launch animated gradient border */
+        .next-launch-border{
+          position:relative;
+        }
+        .next-launch-border::before{
+          content:'';position:absolute;inset:-1px;border-radius:17px;
+          background:linear-gradient(90deg,#57C7FF,transparent,#57C7FF);
+          background-size:200% 100%;
+          animation:gradientShift 3s linear infinite;
+          z-index:-1;opacity:0.6;
+        }
+
+        .providers-scroll::-webkit-scrollbar{height:2px;}
+        .providers-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;flex-shrink:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         @media(max-width:600px){
           .nav-desktop{display:none!important;}
           .nav-hamburger{display:flex!important;}
-          .page-pad{padding:0 16px!important;}
+          .page-pad{padding:0 14px!important;}
+          .launch-hero-grid{flex-direction:column!important;gap:12px!important;}
         }
       `}</style>
 
@@ -298,6 +340,7 @@ export default function Launches() {
                 className="providers-scroll">
                 {providers.map(p=>(
                   <button key={p}
+                    className="provider-pill"
                     onClick={()=>setFilterProvider(p)}
                     style={{
                       flexShrink:0,padding:"6px 14px",borderRadius:99,cursor:"pointer",
@@ -318,9 +361,15 @@ export default function Launches() {
 
           {/* Lista */}
           <div style={{padding:"16px 0 48px"}}>
-            {loading && [...Array(4)].map((_,i)=><SkeletonLaunch key={i}/>)}
+            {loading && [...Array(4)].map((_,i)=>(
+              <div key={i} className="skeleton-launch" style={{height:160,animationDelay:`${i*0.15}s`}}/>
+            ))}
             {error && <div style={{padding:40,textAlign:"center",border:"1px dashed rgba(87,199,255,0.2)",borderRadius:14}}><div style={{fontSize:24,marginBottom:12}}>⚠️</div><div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:10,color:"#f87171"}}>{error}</div></div>}
-            {!loading && !error && filtered.map((l,i) => <LaunchCard key={l.id} launch={l} isNext={i===0&&filterProvider==="Todos"}/>)}
+            {!loading && !error && filtered.map((l,i) => (
+              <div key={l.id} style={{animation:`slideUp 0.4s ease ${Math.min(i*0.06,0.5)}s both`}}>
+                <LaunchCard launch={l} isNext={i===0&&filterProvider==="Todos"}/>
+              </div>
+            ))}
             {!loading && !error && filtered.length === 0 && (
               <div style={{padding:40,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:14}}>
                 <div style={{fontSize:24,marginBottom:10}}>🚀</div>

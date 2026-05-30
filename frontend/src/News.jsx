@@ -161,27 +161,50 @@ export default function News() {
         a{color:inherit;} button{cursor:pointer;border:none;background:none;font-family:inherit;}
         @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes shimmer{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
         @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.022)}}
         @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.15;transform:scale(1.6)}}
-        .news-card{transition:border-color 0.2s,transform 0.15s;}
-        .news-card:hover{border-color:rgba(87,199,255,0.25)!important;transform:translateY(-2px);}
-        .news-card img{transition:transform 0.4s ease,opacity 0.3s;}
-        .news-card:hover img{transform:scale(1.04);}
-        .tab-btn{transition:all 0.2s;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;padding:8px 16px;border-radius:99px;border:1px solid transparent;}
-        .tab-btn:hover{opacity:1!important;}
-        .source-pill{transition:all 0.2s;cursor:pointer;}
-        .search-input{outline:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 14px 9px 36px;color:#E0E8F0;font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;transition:border-color 0.2s;letter-spacing:0.04em;}
+        @keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+        .news-card{
+          transition:transform 0.22s cubic-bezier(0.34,1.2,0.64,1),border-color 0.2s,box-shadow 0.22s;
+        }
+        .news-card:hover{
+          transform:translateY(-5px);
+          border-color:rgba(87,199,255,0.32)!important;
+          box-shadow:0 14px 44px rgba(0,0,0,0.45);
+        }
+        .news-card:active{transform:scale(0.98);}
+        .news-card img{transition:transform 0.5s ease,opacity 0.3s;}
+        .news-card:hover img{transform:scale(1.07);opacity:0.92!important;}
+
+        .tab-btn{transition:all 0.2s cubic-bezier(0.34,1.4,0.64,1);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;padding:8px 16px;border-radius:99px;border:1px solid transparent;}
+        .tab-btn:hover{transform:translateY(-2px);}
+        .tab-btn:active{transform:scale(0.94);}
+
+        .source-pill{transition:all 0.18s cubic-bezier(0.34,1.4,0.64,1);cursor:pointer;}
+        .source-pill:hover{transform:translateY(-2px) scale(1.04);}
+        .source-pill:active{transform:scale(0.9);}
+
+        .search-input{outline:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 14px 9px 36px;color:#E0E8F0;font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;transition:border-color 0.2s,box-shadow 0.2s;letter-spacing:0.04em;}
         .search-input::placeholder{color:rgba(255,255,255,0.2);}
-        .search-input:focus{border-color:rgba(87,199,255,0.35);}
+        .search-input:focus{border-color:rgba(87,199,255,0.4);box-shadow:0 0 0 3px rgba(87,199,255,0.08);}
+
+        .skeleton-card{
+          border-radius:18px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;
+          background:linear-gradient(90deg,rgba(255,255,255,0.03) 0%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 100%);
+          background-size:200% 100%;animation:shimmer 1.8s ease-in-out infinite;
+        }
+
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         @media(max-width:600px){
           .nav-desktop-sections{display:none!important;}
           .nav-hamburger{display:flex!important;}
-          .page-padding{padding:0 16px!important;}
+          .page-padding{padding:0 14px!important;}
           .news-grid{grid-template-columns:1fr!important;}
+          .tabs-scroll{gap:4px!important;padding-bottom:4px!important;}
         }
       `}</style>
 
@@ -337,7 +360,11 @@ export default function News() {
 
           {!currentLoading && (
             <div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:16,paddingBottom:48}}>
-              {filtered.map((a,i)=><NewsCard key={i} article={a}/>)}
+              {filtered.map((a,i)=>(
+                <div key={i} style={{animation:`cardIn 0.4s ease ${Math.min(i*0.05,0.4)}s both`}}>
+                  <NewsCard article={a}/>
+                </div>
+              ))}
 
               {filtered.length === 0 && (
                 <div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16,gridColumn:"1/-1"}}>

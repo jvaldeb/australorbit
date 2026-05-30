@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { usePageMeta } from "./usePageMeta.js";
 import { useGeoLocation } from "./useGeoLocation.js";
 import GeoSplash from "./GeoSplash.jsx";
@@ -429,10 +429,39 @@ const LINKS = [
 /* ─────────────────────────────────────────────
    COMPONENTES
 ───────────────────────────────────────────── */
-function SatCard({ sat, pos, accentColor }) {
+function SatCard({ sat, pos, accentColor, index = 0 }) {
   const [expanded, setExpanded] = useState(false);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const cardRef = React.useRef(null);
   const isLive = sat.norad && pos && sat.status === "EN ÓRBITA";
   const color = sat.color || accentColor;
+
+  function handleMouseMove(e) {
+    const card = cardRef.current;
+    if (!card || expanded) return;
+    const rect = card.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 7;
+    const y = -((e.clientY - rect.top) / rect.height - 0.5) * 7;
+    setTilt({ x, y });
+  }
+  function handleMouseLeave() { setTilt({ x: 0, y: 0 }); }
+
+  return (
+    <div
+      ref={cardRef}
+      className="sat-card"
+      onClick={() => setExpanded(e => !e)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position:"relative", borderRadius:20, overflow:"hidden",
+        border:`1px solid ${color}${expanded?"44":"22"}`,
+        cursor:"pointer",
+        background:"rgba(0,0,0,0.55)",
+        transform:`perspective(800px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+        animation:`slideUp 0.45s ease ${index*0.08}s both`,
+      }}
+    >
 
   return (
     <div
@@ -622,19 +651,75 @@ export default function SatelitesLatam() {
         @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.02)}}
         @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes accentSlide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
-        .country-btn{transition:all 0.18s;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;}
-        .country-btn:hover{transform:translateY(-2px);}
-        .nav-link{text-decoration:none;transition:opacity 0.2s;white-space:nowrap;}
+        @keyframes popIn{0%{opacity:0;transform:scale(0.85)}60%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes countryIn{from{opacity:0;transform:translateY(8px) scale(0.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        @keyframes glowPulse{0%,100%{opacity:0.4}50%{opacity:1}}
+
+        /* Skeleton shimmer */
+        .skeleton{
+          background:linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 100%);
+          background-size:200% 100%;
+          animation:shimmer 1.8s ease-in-out infinite;
+          border-radius:8px;
+        }
+
+        /* Country button — spring bounce */
+        .country-btn{transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;}
+        .country-btn:hover{transform:translateY(-4px) scale(1.06);}
+        .country-btn:active{transform:scale(0.9);}
+
+        /* Sat card — 3D hover */
+        .sat-card{
+          transition:transform 0.25s ease,border-color 0.25s,box-shadow 0.25s;
+          transform-style:preserve-3d;
+          will-change:transform;
+        }
+        .sat-card:hover{
+          transform:translateY(-4px) perspective(600px) rotateX(1deg);
+          box-shadow:0 16px 48px rgba(0,0,0,0.5);
+        }
+        .sat-card:active{transform:scale(0.98);}
+
+        /* Status badge pulse on EN ÓRBITA */
+        .badge-orbita{animation:glowPulse 2.5s ease-in-out infinite;}
+
+        /* Filter button */
+        .filter-btn{transition:all 0.18s cubic-bezier(0.34,1.2,0.64,1);}
+        .filter-btn:hover{transform:translateY(-1px);}
+        .filter-btn:active{transform:scale(0.94);}
+
+        /* CTA rastrear */
+        .cta-rastrear{transition:all 0.2s;position:relative;overflow:hidden;}
+        .cta-rastrear::after{content:'';position:absolute;inset:0;background:white;opacity:0;transition:opacity 0.15s;}
+        .cta-rastrear:hover::after{opacity:0.04;}
+        .cta-rastrear:active::after{opacity:0.1;}
+
+        /* Nav */
+        .nav-link{text-decoration:none;transition:all 0.2s;white-space:nowrap;}
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
-        .sat-card-enter{animation:fadeUp 0.4s ease both;}
+
+        /* Progress bar on active country */
+        .country-active-bar{
+          position:absolute;bottom:0;left:0;right:0;height:2px;border-radius:0 0 14px 14px;
+          animation:gradientShift 3s linear infinite;
+          background-size:200% 100%;
+        }
+
         @media(max-width:700px){
           .nav-desktop{display:none!important;}
           .nav-hamburger{display:flex!important;}
           .page-pad{padding:0 14px!important;}
           .sats-grid{grid-template-columns:1fr!important;}
-          .country-picker{gap:8px!important;}
-          .country-btn .flag-label{display:none;}
+          .country-picker{gap:6px!important;padding-bottom:6px!important;}
+          .country-btn .flag-label{font-size:6.5px!important;}
+          .country-header{grid-template-columns:1fr!important;}
+          .country-stats{flex-direction:row!important;gap:16px!important;}
+          /* Padding bottom para nav mobile futura */
+          .page-pad{padding-bottom:24px!important;}
         }
       `}</style>
 
@@ -732,18 +817,23 @@ export default function SatelitesLatam() {
                       flexShrink:0,
                       padding:"10px 14px",
                       borderRadius:14,
-                      background: isActive ? `${c.accentColor}16` : "rgba(255,255,255,0.03)",
-                      border: `1px solid ${isActive ? c.accentColor+"50" : "rgba(255,255,255,0.07)"}`,
-                      boxShadow: isActive ? `0 0 20px ${c.accentColor}18` : "none",
-                      transition:"all 0.2s",
+                      background: isActive ? `${c.accentColor}18` : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${isActive ? c.accentColor+"55" : "rgba(255,255,255,0.07)"}`,
+                      boxShadow: isActive ? `0 0 24px ${c.accentColor}22, inset 0 1px 0 ${c.accentColor}20` : "none",
+                      position:"relative",
+                      overflow:"hidden",
                     }}
                   >
-                    <span style={{ fontSize:26, display:"block", lineHeight:1 }}>{c.flag}</span>
-                    <span className="flag-label" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7.5, color: isActive ? c.accentColor : "rgba(255,255,255,0.3)", letterSpacing:"0.06em", marginTop:4, transition:"color 0.2s", whiteSpace:"nowrap" }}>
+                    <span style={{ fontSize:28, display:"block", lineHeight:1, filter: isActive ? "drop-shadow(0 0 8px rgba(255,255,255,0.3))" : "none", transition:"filter 0.3s" }}>{c.flag}</span>
+                    <span className="flag-label" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7.5, color: isActive ? c.accentColor : "rgba(255,255,255,0.3)", letterSpacing:"0.06em", marginTop:4, transition:"color 0.2s", whiteSpace:"nowrap", display:"block" }}>
                       {c.name}
                     </span>
                     {c.sats.some(s => s.status === "EN ÓRBITA") && (
-                      <span style={{ display:"block", width:4, height:4, borderRadius:"50%", background:"#4ade80", margin:"2px auto 0", opacity:0.8 }}/>
+                      <span style={{ display:"block", width:4, height:4, borderRadius:"50%", background:"#4ade80", margin:"2px auto 0", opacity: isActive ? 1 : 0.5, animation:"livePulse 2s infinite" }}/>
+                    )}
+                    {/* Barra activa animada */}
+                    {isActive && (
+                      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:2, borderRadius:"0 0 14px 14px", background:`linear-gradient(90deg, transparent, ${c.accentColor}, transparent)`, backgroundSize:"200% 100%", animation:"gradientShift 2s linear infinite" }}/>
                     )}
                   </button>
                 );
@@ -754,27 +844,29 @@ export default function SatelitesLatam() {
           {/* ── PANEL DEL PAÍS ACTIVO ── */}
           <div key={activeCountry} style={{ animation:"fadeUp 0.4s ease both" }}>
 
-            {/* Header del país */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:20, alignItems:"start", marginBottom:28, padding:"22px 26px", borderRadius:20, background:`${country.accentColor}08`, border:`1px solid ${country.accentColor}20` }}>
-              <div>
-                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
-                  <span style={{ fontSize:36 }}>{country.flag}</span>
-                  <div>
-                    <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:"#fff" }}>{country.name}</div>
-                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:country.accentColor, letterSpacing:"0.1em" }}>{country.agency}</div>
-                  </div>
+          {/* Header del país */}
+          <div className="country-header" style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:20, alignItems:"start", marginBottom:28, padding:"22px 26px", borderRadius:20, background:`${country.accentColor}08`, border:`1px solid ${country.accentColor}20`, position:"relative", overflow:"hidden" }}>
+            {/* Glow de fondo */}
+            <div style={{ position:"absolute", top:-40, right:-40, width:160, height:160, borderRadius:"50%", background:country.accentColor, opacity:0.04, filter:"blur(40px)", pointerEvents:"none" }}/>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+                <span style={{ fontSize:40, display:"block", animation:"popIn 0.4s ease both", lineHeight:1 }}>{country.flag}</span>
+                <div>
+                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:"#fff" }}>{country.name}</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:9, color:country.accentColor, letterSpacing:"0.1em" }}>{country.agency}</div>
                 </div>
-                <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", lineHeight:1.7, maxWidth:520 }}>{country.desc}</p>
               </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10, flexShrink:0 }}>
-                {country.stats.map(([n, l]) => (
-                  <div key={l} style={{ textAlign:"right" }}>
-                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:22, fontWeight:600, color:country.accentColor }}>{n}</div>
-                    <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7.5, color:"rgba(255,255,255,0.22)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{l}</div>
-                  </div>
-                ))}
-              </div>
+              <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", lineHeight:1.7, maxWidth:520 }}>{country.desc}</p>
             </div>
+            <div className="country-stats" style={{ display:"flex", flexDirection:"column", gap:10, flexShrink:0 }}>
+              {country.stats.map(([n, l], i) => (
+                <div key={l} style={{ textAlign:"right", animation:`popIn 0.4s ease ${i*0.1}s both` }}>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:22, fontWeight:600, color:country.accentColor }}>{n}</div>
+                  <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:7.5, color:"rgba(255,255,255,0.22)", letterSpacing:"0.08em", textTransform:"uppercase" }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
 
             {/* Filtro de estado */}
             <div style={{ display:"flex", gap:6, marginBottom:20, flexWrap:"wrap" }}>
@@ -800,9 +892,7 @@ export default function SatelitesLatam() {
             {/* Grid de satélites */}
             <div className="sats-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, paddingBottom:56 }}>
               {filteredSats.map((sat, i) => (
-                <div key={sat.id} className="sat-card-enter" style={{ animationDelay:`${i*0.07}s` }}>
-                  <SatCard sat={sat} pos={positions[sat.id]} accentColor={country.accentColor}/>
-                </div>
+                <SatCard key={sat.id} sat={sat} pos={positions[sat.id]} accentColor={country.accentColor} index={i}/>
               ))}
               {filteredSats.length === 0 && (
                 <div style={{ gridColumn:"1/-1", padding:48, textAlign:"center", border:"1px dashed rgba(255,255,255,0.05)", borderRadius:14 }}>
