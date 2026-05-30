@@ -1348,33 +1348,41 @@ export default function App() {
   const [nightPass, setNightPass]           = useState(null);
   const [alertToast, setAlertToast]         = useState(null);
   const [sharePreview, setSharePreview]     = useState(null);
-  // Geolocalización persistente: solo muestra splash si nunca guardó coords
-  const [geoPrompt, setGeoPrompt]           = useState(() => {
+  // ── Geolocalización persistente ─────────────────────────────────
+  // Solo muestra el splash la PRIMERA vez. Después lee de localStorage.
+  const [geoPrompt, setGeoPrompt] = useState(() => {
     try { return !localStorage.getItem("ao_lat"); } catch { return true; }
   });
+  const alertTimers = useRef([]);
 
-  // Cargar coords guardadas al montar
+  // Cargar coords guardadas inmediatamente al montar
   useEffect(() => {
     try {
       const lat  = parseFloat(localStorage.getItem("ao_lat"));
       const lon  = parseFloat(localStorage.getItem("ao_lon"));
       const city = localStorage.getItem("ao_city");
-      if (lat && lon) { setUserLat(lat); setUserLon(lon); }
-      if (city) setUserCity(city);
+      if (!isNaN(lat) && !isNaN(lon) && lat !== 0) {
+        setUserLat(lat);
+        setUserLon(lon);
+        if (city) setUserCity(city);
+      }
     } catch {}
   }, []);
-  const alertTimers = useRef([]);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
   const requestGeo = () => {
     setGeoPrompt(false);
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      // Sin soporte — guardar Santiago como default
+      try { localStorage.setItem("ao_lat","-33.4489"); localStorage.setItem("ao_lon","-70.6693"); localStorage.setItem("ao_city","Santiago"); } catch {}
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const lat = coords.latitude, lon = coords.longitude;
         setUserLat(lat); setUserLon(lon);
-        try { localStorage.setItem("ao_lat", lat); localStorage.setItem("ao_lon", lon); } catch {}
+        try { localStorage.setItem("ao_lat", String(lat)); localStorage.setItem("ao_lon", String(lon)); } catch {}
         fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
           .then(r => r.json())
           .then(d => {
@@ -1385,12 +1393,8 @@ export default function App() {
           .catch(() => {});
       },
       () => {
-        // Si rechaza, guardar Santiago para no volver a preguntar
-        try {
-          localStorage.setItem("ao_lat", "-33.4489");
-          localStorage.setItem("ao_lon", "-70.6693");
-          localStorage.setItem("ao_city", "Santiago");
-        } catch {}
+        // Rechazó — guardar Santiago para no volver a preguntar
+        try { localStorage.setItem("ao_lat","-33.4489"); localStorage.setItem("ao_lon","-70.6693"); localStorage.setItem("ao_city","Santiago"); } catch {}
       }
     );
   };
@@ -1639,27 +1643,22 @@ export default function App() {
 
         /* ── MOBILE ── */
         @media(max-width:600px){
-          /* Nav */
           .nav-desktop-sections{display:none!important;}
           .nav-desktop-clock{display:none!important;}
           .nav-hamburger{display:flex!important;}
           .nav-live-badge{display:none!important;}
           .section-tabs-desktop{display:none!important;}
-
-          /* Ficha técnica */
           .ficha-mobile{display:block!important;}
           .ficha-desktop{display:none!important;}
 
-          /* Mobile menu drawer — pantalla completa */
+          /* Drawer full-screen */
           .mobile-menu{
             display:flex;flex-direction:column;
             position:fixed;top:0;left:0;right:0;bottom:0;
             background:rgba(0,0,0,0.98);
             backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
-            padding:96px 28px 40px;
-            z-index:150;
-            animation:fadeUp 0.22s ease both;
-            overflow-y:auto;
+            padding:100px 28px 40px;z-index:150;
+            animation:fadeUp 0.22s ease both;overflow-y:auto;
           }
           .mobile-menu a{
             font-family:'Syne',sans-serif;font-size:26px;font-weight:700;
@@ -1678,26 +1677,20 @@ export default function App() {
           .hero-grid{grid-template-columns:1fr!important;gap:0!important;padding:20px 0 14px!important;}
           .hero-title-line{font-size:clamp(26px,7.5vw,36px)!important;line-height:1.12!important;}
           .hero-title-italic{font-size:clamp(28px,8vw,38px)!important;line-height:1.1!important;}
+          .night-mode-btn-hero{display:none!important;}
 
           /* Earth bg */
           .earth-bg-img{width:100vw!important;height:100vw!important;opacity:0.09!important;}
 
-          /* Content padding con espacio para FAB */
+          /* Padding */
           .page-padding{padding:0 14px!important;padding-bottom:84px!important;}
-
-          /* Sat picker */
           .sat-picker-label{font-size:7px!important;}
-
-          /* Pass cards */
           .pass-time-num{font-size:20px!important;}
           .pass-cd{font-size:16px!important;}
           .next-pass-cell-time{font-size:22px!important;}
-
-          /* Botón modo nocturno en hero — lo cubre el FAB */
-          .night-mode-btn-hero{display:none!important;}
         }
 
-        /* Nav hamburger */
+        /* Nav on mobile: just logo + hamburger */
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         .nav-hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4.5px,4.5px);}
@@ -1709,8 +1702,8 @@ export default function App() {
         @media(max-width:600px){
           .nav-mobile-clock{display:block;font-family:'IBM Plex Mono',monospace;font-size:18px;color:#fff;letter-spacing:0.04em;margin-left:auto;margin-right:12px;}
         }
-        /* FAB nocturno — solo mobile */
-        .night-fab{display:none;position:fixed;bottom:28px;right:18px;z-index:180;width:54px;height:54px;border-radius:50%;align-items:center;justify-content:center;font-size:22px;cursor:pointer;border:none;box-shadow:0 4px 24px rgba(0,0,0,0.6);-webkit-tap-highlight-color:transparent;}
+        /* FAB 🌙 nocturno — solo mobile */
+        .night-fab{display:none;position:fixed;bottom:28px;right:18px;z-index:180;width:54px;height:54px;border-radius:50%;align-items:center;justify-content:center;font-size:22px;cursor:pointer;border:none;box-shadow:0 4px 24px rgba(0,0,0,0.6);-webkit-tap-highlight-color:transparent;transition:transform 0.2s;}
         .night-fab:active{transform:scale(0.88);}
         @media(max-width:600px){.night-fab{display:flex!important;}}
       `}</style>
@@ -2350,15 +2343,11 @@ export default function App() {
         <NightMode pass={nightPass} sat={sat} onClose={() => setNightMode(false)} />
       )}
 
-      {/* FAB 🌙 solo mobile — modo observación nocturna */}
+      {/* FAB 🌙 — solo mobile, modo observación nocturna */}
       {next && !nightMode && (
-        <button
-          className="night-fab"
+        <button className="night-fab"
           onClick={() => { setNightPass(next); setNightMode(true); navigator.vibrate?.(40); }}
-          style={{
-            background:`linear-gradient(135deg,rgba(3,6,18,0.95),${sat.color}28)`,
-            border:`1px solid ${sat.color}45`,
-          }}
+          style={{background:`linear-gradient(135deg,rgba(3,6,18,0.96),${sat.color}28)`,border:`1px solid ${sat.color}45`}}
         >🌙</button>
       )}
     </>

@@ -16,7 +16,7 @@ const glass = (extra = {}) => ({
 
 const LINKS = [
   ["Rastreo",            "/"],
-  ["Satélites 🇨🇱",      "/satelites-chilenos"],
+  ["Satélites LATAM",      "/satelites-chilenos"],
   ["Lanzamientos",       "/lanzamientos"],
   ["Clima espacial",     "/espacio"],
   ["Noticias",           "/noticias"],
@@ -46,40 +46,49 @@ function SkeletonCard() {
   );
 }
 
-function NewsCard({ article }) {
+function NewsCard({ article, featured = false }) {
+  const accentColor = article.latam ? "#6EE7B7" : "#57C7FF";
   return (
-    <a href={article.url} target="_blank" rel="noopener noreferrer" className="news-card"
-      style={{display:"flex",flexDirection:"column",textDecoration:"none",borderRadius:18,overflow:"hidden",...glass({})}}>
+    <a href={article.url} target="_blank" rel="noopener noreferrer"
+      className="news-card"
+      style={{
+        display:"flex", flexDirection:"column", textDecoration:"none",
+        borderRadius: featured ? 22 : 18, overflow:"hidden",
+        background:"rgba(255,255,255,0.025)",
+        border:`1px solid rgba(255,255,255,${featured?"0.1":"0.06"})`,
+        backdropFilter:"blur(28px)", WebkitBackdropFilter:"blur(28px)",
+        position:"relative",
+      }}>
       {article.image && (
-        <div style={{height:180,overflow:"hidden",flexShrink:0}}>
+        <div style={{height: featured ? 260 : 190, overflow:"hidden", flexShrink:0, position:"relative"}}>
           <img src={article.image} alt={article.title}
-            style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.78,display:"block"}}
+            style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.75,display:"block"}}
             onError={e=>{e.target.parentElement.style.display="none";}}/>
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)"}}/>
+          <div style={{position:"absolute",bottom:12,left:14,display:"flex",gap:6,alignItems:"center"}}>
+            {article.latam && <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:6,background:"rgba(110,231,183,0.25)",color:"#6EE7B7",border:"1px solid rgba(110,231,183,0.4)",letterSpacing:"0.12em"}}>LATAM</span>}
+            <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",padding:"3px 9px",borderRadius:6,background:"rgba(0,0,0,0.5)",color:"rgba(255,255,255,0.7)",letterSpacing:"0.1em"}}>{(article.source||"SPACE").toUpperCase()}</span>
+          </div>
+          <div style={{position:"absolute",top:12,right:12,fontSize:8.5,color:"rgba(255,255,255,0.4)",fontFamily:"'IBM Plex Mono',monospace",background:"rgba(0,0,0,0.4)",padding:"2px 8px",borderRadius:5}}>{article.published}</div>
         </div>
       )}
-      {/* Badge LATAM si aplica */}
-      {article.latam && (
-        <div style={{position:"relative"}}>
-          <span style={{
-            position:"absolute",top:-28,left:12,
-            fontSize:7,fontFamily:"'IBM Plex Mono',monospace",
-            padding:"2px 7px",borderRadius:4,
-            background:"rgba(110,231,183,0.15)",
-            color:"#6EE7B7",border:"1px solid rgba(110,231,183,0.3)",
-            letterSpacing:"0.1em",
-          }}>LATAM</span>
-        </div>
-      )}
-      <div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:10,flex:1}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-          <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.12em",padding:"3px 8px",borderRadius:5,background:"rgba(87,199,255,0.08)",color:"#57C7FF",border:"1px solid rgba(87,199,255,0.15)"}}>{(article.source||"SPACE").toUpperCase()}</span>
-          <span style={{fontSize:8.5,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace"}}>{article.published}</span>
-        </div>
-        <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,color:"rgba(255,255,255,0.88)",lineHeight:1.38,letterSpacing:"-0.01em"}}>{article.title}</div>
-        {article.summary && (
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.32)",lineHeight:1.68,flex:1,display:"-webkit-box",WebkitLineClamp:4,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{article.summary}</div>
+      <div style={{padding: featured ? "20px 22px" : "15px 17px", display:"flex",flexDirection:"column",gap:9,flex:1}}>
+        {!article.image && (
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              {article.latam && <span style={{fontSize:7,fontFamily:"'IBM Plex Mono',monospace",padding:"2px 7px",borderRadius:4,background:"rgba(110,231,183,0.12)",color:"#6EE7B7",border:"1px solid rgba(110,231,183,0.25)",letterSpacing:"0.1em"}}>LATAM</span>}
+              <span style={{fontSize:7.5,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.1em",padding:"3px 8px",borderRadius:5,background:`${accentColor}10`,color:accentColor,border:`1px solid ${accentColor}20`}}>{(article.source||"SPACE").toUpperCase()}</span>
+            </div>
+            <span style={{fontSize:8.5,color:"rgba(255,255,255,0.2)",fontFamily:"'IBM Plex Mono',monospace"}}>{article.published}</span>
+          </div>
         )}
-        <div style={{fontSize:10,color:"#57C7FF",fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.08em",marginTop:4}}>Leer en {article.source} →</div>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:featured?17:14,fontWeight:700,color:"rgba(255,255,255,0.9)",lineHeight:1.35,letterSpacing:"-0.01em"}}>{article.title}</div>
+        {article.summary && (
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",lineHeight:1.7,flex:1,display:"-webkit-box",WebkitLineClamp:featured?4:3,WebkitBoxOrient:"vertical",overflow:"hidden",fontWeight:300}}>{article.summary}</div>
+        )}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:2}}>
+          <span style={{fontSize:9.5,color:accentColor,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:"0.06em"}}>Leer →</span>
+        </div>
       </div>
     </a>
   );
@@ -102,54 +111,96 @@ export default function News() {
   const [countryLoading, setCountryLoading] = useState(true);
   const [logoError, setLogoError]     = useState(false);
   const [menuOpen, setMenuOpen]       = useState(false);
-  const [activeTab, setActiveTab]     = useState("global"); // "global" | "latam" | "pais"
+  const [activeTab, setActiveTab]     = useState("global");
   const [search, setSearch]           = useState("");
   const [activeSource, setActiveSource] = useState("Todos");
 
-  const LATAM_KW = ["chile","argentina","brasil","brazil","mexico","colombia","peru","venezuela",
-    "bolivia","ecuador","atacama","alma","conae","inpe","invap","arsat","suchai","lemu",
-    "latin america","south america","southern hemisphere","andes","amazon","patagonia"];
+  // Keywords LATAM para filtro local — funciona aunque el backend no tenga el endpoint
+  const LATAM_KW = [
+    "chile","chileno","chilena","argentina","argentino","brasil","brazil","brasileiro",
+    "mexico","méxico","mexicano","colombia","colombiano","peru","perú","peruano",
+    "venezuela","bolivar","bolivia","boliviano","ecuador","ecuatoriano",
+    "latin america","latinoamérica","south america","sudamérica","southern hemisphere",
+    "atacama","alma telescope","paranal","eso observatory","conae","inpe","invap",
+    "arsat","suchai","lemu","fasat","andes","amazon","patagonia","aurora austral",
+  ];
 
   function filterLatam(articles) {
-    return articles.filter(a => {
-      const text = ((a.title||"")+" "+(a.title_en||"")+" "+(a.summary||"")).toLowerCase();
-      return LATAM_KW.some(kw => text.includes(kw));
-    });
+    return articles
+      .filter(a => {
+        const t = ((a.title||"") + " " + (a.title_en||"") + " " + (a.summary||"")).toLowerCase();
+        return LATAM_KW.some(kw => t.includes(kw));
+      })
+      .map(a => ({...a, latam: true}));
+  }
+
+  function filterCountry(articles, code) {
+    const MAP = {
+      CL: ["chile","chileno","chilena","ssot","suchai","lemu","plantsat","fasat","atacama","alma","fach"],
+      AR: ["argentina","argentino","arsat","invap","conae","patagonia"],
+      BR: ["brasil","brazil","brasileiro","inpe","amazonia","amazon"],
+      MX: ["mexico","mexicano","morelos"],
+      CO: ["colombia","colombiano"],
+      PE: ["peru","peruano","perusat","conida"],
+      VE: ["venezuela","venezolano","venesat"],
+      BO: ["bolivia","boliviano","tupac"],
+      EC: ["ecuador","ecuatoriano"],
+    };
+    const kws = MAP[code] || [];
+    return articles
+      .filter(a => {
+        const t = ((a.title||"") + " " + (a.title_en||"") + " " + (a.summary||"")).toLowerCase();
+        return kws.some(kw => t.includes(kw));
+      })
+      .map(a => ({...a, country_match: code}));
   }
 
   useEffect(() => {
-    // Cargar noticias globales
     fetch(`${API}/news`)
       .then(r => r.json())
       .then(d => {
         const arts = Array.isArray(d) ? d : (d.articles || []);
         setGlobalNews(arts);
         setLoading(false);
-        // Intentar endpoint LATAM, si falla filtrar localmente
+
+        // Filtrar LATAM localmente de inmediato (no esperar backend)
+        const localLatam = filterLatam(arts);
+        setLatamNews(localLatam);
+        setLatamLoading(false);
+
+        // Intentar enriquecer con endpoint del backend (opcional, no bloqueante)
         fetch(`${API}/news/latam`)
-          .then(r => { if (!r.ok) throw new Error("no endpoint"); return r.json(); })
-          .then(d => { setLatamNews(d.articles || []); setLatamLoading(false); })
-          .catch(() => {
-            // Fallback: filtrar noticias globales por keywords LATAM
-            const latam = filterLatam(arts);
-            setLatamNews(latam.map(a => ({...a, latam:true})));
-            setLatamLoading(false);
-          });
+          .then(r => { if (!r.ok) return null; return r.json(); })
+          .then(d => {
+            if (!d) return;
+            const backendArts = d.articles || [];
+            if (backendArts.length > 0) {
+              // Combinar: backend + filtro local, deduplicar por URL
+              const seen = new Set(backendArts.map(a => a.url));
+              const combined = [
+                ...backendArts.map(a => ({...a, latam:true})),
+                ...localLatam.filter(a => !seen.has(a.url)),
+              ];
+              setLatamNews(combined);
+            }
+          })
+          .catch(() => {}); // falla silenciosamente — ya tenemos el filtro local
       })
       .catch(() => { setLoading(false); setLatamLoading(false); });
   }, []);
 
   useEffect(() => {
-    if (!userCountryCode || userCountryCode === "CL") {
-      setCountryNews([]);
-      setCountryLoading(false);
-      return;
-    }
+    if (!userCountryCode) { setCountryLoading(false); return; }
+    // Filtro local primero
+    const local = filterCountry(globalNews, userCountryCode);
+    if (local.length > 0) { setCountryNews(local); setCountryLoading(false); return; }
+    // Si no hay nada local, intentar endpoint
     fetch(`${API}/news/country/${userCountryCode}`)
-      .then(r => r.json())
-      .then(d => { setCountryNews(d.articles || []); setCountryLoading(false); })
-      .catch(() => setCountryLoading(false));
-  }, [userCountryCode]);
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { setCountryNews(d.articles || []); })
+      .catch(() => {})
+      .finally(() => setCountryLoading(false));
+  }, [userCountryCode, globalNews]);
 
   const currentNews = activeTab === "global" ? globalNews : activeTab === "latam" ? latamNews : countryNews;
   const currentLoading = activeTab === "global" ? loading : activeTab === "latam" ? latamLoading : countryLoading;
@@ -182,20 +233,29 @@ export default function News() {
         a{color:inherit;} button{cursor:pointer;border:none;background:none;font-family:inherit;}
         @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes shimmer{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
         @keyframes earthFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes earthDrift{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.022)}}
         @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.15;transform:scale(1.6)}}
-        .news-card{transition:border-color 0.2s,transform 0.15s;}
-        .news-card:hover{border-color:rgba(87,199,255,0.25)!important;transform:translateY(-2px);}
-        .news-card img{transition:transform 0.4s ease,opacity 0.3s;}
-        .news-card:hover img{transform:scale(1.04);}
-        .tab-btn{transition:all 0.2s;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;padding:8px 16px;border-radius:99px;border:1px solid transparent;}
-        .tab-btn:hover{opacity:1!important;}
-        .source-pill{transition:all 0.2s;cursor:pointer;}
-        .search-input{outline:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 14px 9px 36px;color:#E0E8F0;font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;transition:border-color 0.2s;letter-spacing:0.04em;}
+        .news-card{
+          transition:transform 0.22s cubic-bezier(0.34,1.2,0.64,1),border-color 0.2s,box-shadow 0.22s;
+        }
+        .news-card:hover{
+          transform:translateY(-4px);
+          border-color:rgba(87,199,255,0.28)!important;
+          box-shadow:0 12px 40px rgba(0,0,0,0.4);
+        }
+        .news-card:active{transform:scale(0.98);}
+        .news-card img{transition:transform 0.5s ease,opacity 0.3s;}
+        .news-card:hover img{transform:scale(1.06);opacity:0.88!important;}
+        .tab-btn{transition:all 0.2s cubic-bezier(0.34,1.4,0.64,1);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;padding:8px 16px;border-radius:99px;border:1px solid transparent;}
+        .tab-btn:hover{transform:translateY(-2px);}
+        .source-pill{transition:all 0.18s cubic-bezier(0.34,1.4,0.64,1);cursor:pointer;}
+        .source-pill:hover{transform:translateY(-2px) scale(1.04);}
+        .search-input{outline:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:9px 14px 9px 36px;color:#E0E8F0;font-family:'IBM Plex Mono',monospace;font-size:11px;width:100%;transition:border-color 0.2s,box-shadow 0.2s;letter-spacing:0.04em;}
         .search-input::placeholder{color:rgba(255,255,255,0.2);}
-        .search-input:focus{border-color:rgba(87,199,255,0.35);}
+        .search-input:focus{border-color:rgba(87,199,255,0.4);box-shadow:0 0 0 3px rgba(87,199,255,0.08);}
+        .skeleton-card{border-radius:18px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;background:linear-gradient(90deg,rgba(255,255,255,0.03) 0%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 100%);background-size:200% 100%;animation:shimmer 1.8s ease-in-out infinite;}
         .nav-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;flex-direction:column;gap:5px;padding:0;}
         .nav-hamburger span{display:block;width:18px;height:1.5px;background:rgba(255,255,255,0.8);border-radius:2px;transition:all 0.25s;}
         @media(max-width:600px){
@@ -358,7 +418,15 @@ export default function News() {
 
           {!currentLoading && (
             <div className="news-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:16,paddingBottom:48}}>
-              {filtered.map((a,i)=><NewsCard key={i} article={a}/>)}
+              {filtered.map((a,i)=>(
+                <div key={i} style={{
+                  gridColumn: i===0&&filtered.length>1?"1 / -1 ":"auto",
+                  maxWidth: i===0&&filtered.length>1?680:"none",
+                  animation:`fadeUp 0.4s ease ${Math.min(i*0.05,0.4)}s both`
+                }}>
+                  <NewsCard article={a} featured={i===0}/>
+                </div>
+              ))}
 
               {filtered.length === 0 && (
                 <div style={{padding:48,textAlign:"center",border:"1px dashed rgba(255,255,255,0.05)",borderRadius:16,gridColumn:"1/-1"}}>

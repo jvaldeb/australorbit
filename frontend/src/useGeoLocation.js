@@ -1,97 +1,81 @@
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "ao_user_location";
-const CITY_KEY    = "ao_user_city";
-const COUNTRY_KEY = "ao_user_country";
-const CODE_KEY    = "ao_user_country_code";
+// ── Clave única en localStorage ──────────────────────────────────────────────
+const GEO_KEY    = "ao_geo_v2";
+const CACHE_DAYS = 30; // refrescar coords cada 30 días
 
-// Países de LATAM para detección
-const LATAM_COUNTRIES = new Set([
+function readStorage() {
+  try {
+    const raw = localStorage.getItem(GEO_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (Date.now() - (data.ts || 0) > CACHE_DAYS * 86400000) return null;
+    return data;
+  } catch { return null; }
+}
+
+function saveStorage(data) {
+  try { localStorage.setItem(GEO_KEY, JSON.stringify({ ...data, ts: Date.now() })); } catch {}
+}
+
+const LATAM = new Set([
   "Chile","Argentina","Brasil","Brazil","México","Mexico","Colombia","Perú","Peru",
-  "Venezuela","Bolivia","Ecuador","Uruguay","Paraguay","Cuba","República Dominicana",
-  "Dominican Republic","Guatemala","Honduras","El Salvador","Nicaragua","Costa Rica",
-  "Panamá","Panama","Puerto Rico","Jamaica","Trinidad and Tobago",
+  "Venezuela","Bolivia","Ecuador","Uruguay","Paraguay","Cuba",
+  "República Dominicana","Dominican Republic","Guatemala","Honduras",
+  "El Salvador","Nicaragua","Costa Rica","Panamá","Panama","Puerto Rico",
 ]);
 
 export function useGeoLocation() {
-  const [userLat, setUserLat]         = useState(-33.4489);
-  const [userLon, setUserLon]         = useState(-70.6693);
-  const [userCity, setUserCity]       = useState("Santiago");
-  const [userCountry, setUserCountry] = useState("Chile");
-  const [userCountryCode, setUserCountryCode] = useState("CL");
-  const [isLatam, setIsLatam]         = useState(true);
-  const [geoReady, setGeoReady]       = useState(false);
-  const [geoPrompt, setGeoPrompt]     = useState(false);
+  const saved = readStorage();
 
-  // Al montar, intentar cargar del localStorage primero
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const city  = localStorage.getItem(CITY_KEY);
-    const country = localStorage.getItem(COUNTRY_KEY);
-    const code  = localStorage.getItem(CODE_KEY);
-
-    if (saved && city) {
-      const [lat, lon] = JSON.parse(saved);
-      setUserLat(lat);
-      setUserLon(lon);
-      setUserCity(city);
-      if (country) {
-        setUserCountry(country);
-        setIsLatam(LATAM_COUNTRIES.has(country));
-      }
-      if (code) setUserCountryCode(code);
-      setGeoReady(true);
-    } else {
-      // No hay ubicación guardada — mostrar splash
-      setGeoPrompt(true);
-    }
-  }, []);
+  const [userLat, setUserLat]                 = useState(saved?.lat  ?? -33.4489);
+  const [userLon, setUserLon]                 = useState(saved?.lon  ?? -70.6693);
+  const [userCity, setUserCity]               = useState(saved?.city ?? "Santiago");
+  const [userCountry, setUserCountry]         = useState(saved?.country ?? "Chile");
+  const [userCountryCode, setUserCountryCode] = useState(saved?.code ?? "CL");
+  const [isLatam, setIsLatam]                 = useState(LATAM.has(saved?.country ?? "Chile"));
+  const [geoReady, setGeoReady]               = useState(!!saved);
+  const [geoPrompt, setGeoPrompt]             = useState(!saved); // splash solo si no hay datos
 
   const requestGeo = () => {
     setGeoPrompt(false);
     if (!navigator.geolocation) {
+      saveStorage({ lat:-33.4489, lon:-70.6693, city:"Santiago", country:"Chile", code:"CL" });
       setGeoReady(true);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const lat = coords.latitude;
-        const lon = coords.longitude;
-        setUserLat(lat);
-        setUserLon(lon);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([lat, lon]));
-
-        // Reverse geocoding con Nominatim
+        const lat = coords.latitude, lon = coords.longitude;
+        setUserLat(lat); setUserLon(lon);
         fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
           .then(r => r.json())
           .then(d => {
             const addr    = d.address || {};
             const city    = addr.city || addr.town || addr.village || addr.county || "tu ciudad";
             const country = addr.country || "Chile";
-            const code    = addr.country_code?.toUpperCase() || "CL";
-            setUserCity(city);
-            setUserCountry(country);
-            setUserCountryCode(code);
-            setIsLatam(LATAM_COUNTRIES.has(country));
-            localStorage.setItem(CITY_KEY, city);
-            localStorage.setItem(COUNTRY_KEY, country);
-            localStorage.setItem(CODE_KEY, code);
+            const code    = (addr.country_code || "cl").toUpperCase();
+            setUserCity(city); setUserCountry(country); setUserCountryCode(code);
+            setIsLatam(LATAM.has(country));
+            saveStorage({ lat, lon, city, country, code });
             setGeoReady(true);
           })
-          .catch(() => setGeoReady(true));
+          .catch(() => {
+            saveStorage({ lat, lon, city:"tu ciudad", country:"Chile", code:"CL" });
+            setGeoReady(true);
+          });
       },
       () => {
-        // Rechazó permiso — usar Santiago por default
+        // Rechazó permiso → guardar Santiago para no volver a preguntar nunca
+        saveStorage({ lat:-33.4489, lon:-70.6693, city:"Santiago", country:"Chile", code:"CL" });
         setGeoReady(true);
-      }
+      },
+      { timeout: 8000, maximumAge: 300000 }
     );
   };
 
   const resetLocation = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(CITY_KEY);
-    localStorage.removeItem(COUNTRY_KEY);
-    localStorage.removeItem(CODE_KEY);
+    try { localStorage.removeItem(GEO_KEY); } catch {}
     setGeoPrompt(true);
   };
 
@@ -101,5 +85,3 @@ export function useGeoLocation() {
     requestGeo, resetLocation,
   };
 }
-
-export { LATAM_COUNTRIES };
