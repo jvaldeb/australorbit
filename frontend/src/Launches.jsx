@@ -287,23 +287,32 @@ export default function Launches() {
 
           <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(87,199,255,0.3),transparent)"}}/>
 
-          {/* Filtro por proveedor */}
+          {/* Filtro por proveedor — con scroll horizontal visible */}
           {!loading && !error && launches.length > 0 && (
-            <div style={{padding:"16px 0 8px",display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}}>
-              {providers.map(p=>(
-                <button key={p}
-                  onClick={()=>setFilterProvider(p)}
-                  style={{
-                    flexShrink:0,padding:"4px 12px",borderRadius:99,cursor:"pointer",
-                    background:filterProvider===p?"rgba(87,199,255,0.12)":"transparent",
-                    border:`1px solid ${filterProvider===p?"rgba(87,199,255,0.4)":"rgba(255,255,255,0.08)"}`,
-                    color:filterProvider===p?"#57C7FF":"rgba(255,255,255,0.35)",
-                    fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.06em",
-                    transition:"all 0.2s",
-                  }}>
-                  {p}
-                </button>
-              ))}
+            <div style={{padding:"16px 0 8px",position:"relative"}}>
+              <div style={{fontSize:8,fontFamily:"'IBM Plex Mono',monospace",color:"rgba(255,255,255,0.2)",letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:8}}>Empresa de lanzamiento</div>
+              <div style={{
+                display:"flex",gap:6,overflowX:"auto",paddingBottom:8,
+                scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.12) transparent",
+              }}
+                className="providers-scroll">
+                {providers.map(p=>(
+                  <button key={p}
+                    onClick={()=>setFilterProvider(p)}
+                    style={{
+                      flexShrink:0,padding:"6px 14px",borderRadius:99,cursor:"pointer",
+                      background:filterProvider===p?"rgba(87,199,255,0.12)":"transparent",
+                      border:`1px solid ${filterProvider===p?"rgba(87,199,255,0.4)":"rgba(255,255,255,0.08)"}`,
+                      color:filterProvider===p?"#57C7FF":"rgba(255,255,255,0.4)",
+                      fontFamily:"'IBM Plex Mono',monospace",fontSize:9,letterSpacing:"0.06em",
+                      transition:"all 0.2s",whiteSpace:"nowrap",
+                    }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+              {/* Gradiente de fade derecho para indicar scroll */}
+              <div style={{position:"absolute",right:0,top:32,bottom:8,width:32,background:"linear-gradient(to right, transparent, #050816)",pointerEvents:"none"}}/>
             </div>
           )}
 

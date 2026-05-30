@@ -6,7 +6,7 @@ import Launches from "./Launches.jsx";
 import SpaceWeather from "./SpaceWeather.jsx";
 import Contact from "./Contact.jsx";
 import News from "./News.jsx";
-import SatelitesChilenos from "./SatelitesChilenos.jsx";
+import SatelitesChilenos from "./SatelitesLatam.jsx";
 
 inject();
 
